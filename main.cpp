@@ -21,17 +21,26 @@ int main() {
     std::map<int, void*> aav;
     aav[3] = 0;
 
-
     vae::vsm::TestVisualize testVisualize;
 
     vae::vsm::basic::Map bmap(120, 80);
 
-    vae::vsm::chunk::Map cmap(8);
-    cmap.pregenChunks(0, 0, 8);
+    //Test vae::vsm::chunk::Map functions
+    vae::vsm::chunk::ChunkMapComposer mapComposer;
+    vae::vsm::chunk::Map::Id mapId("map-zero");
+    vae::vsm::chunk::Map::Ptr cmap = mapComposer.getMap(mapId);
+
+    vae::vsm::chunk::Node node;
+    cmap->insert(node);
+
+    vae::vsm::chunk::Viewport vp;
+    cmap->insert(vp);
+
 
     int x = 0, y = 0;
     while(testVisualize.getWindow().isOpen()){
-        bmap.draw(testVisualize);
+        //bmap.draw(testVisualize);
+        cmap->draw(testVisualize);
         testVisualize.cycle();
     }
 

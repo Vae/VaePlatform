@@ -53,6 +53,7 @@ namespace vae {
             void drawPoint(int x, int y, sf::Color col = sf::Color::White){
                 sf::RectangleShape rect(sf::Vector2f(1, 1));
                 rect.setPosition(x, y);
+                rect.setFillColor(col);
                 window.draw(rect);
             }
 
