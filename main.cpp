@@ -29,7 +29,10 @@ int main() {
     vae::vsm::chunk::ChunkMapComposer mapComposer;
     vae::vsm::chunk::Map::Id mapId("map-zero");
     vae::vsm::chunk::Node node;
+    node.setMapId(mapId);
     mapComposer.insert(node);
+    vae::vsm::chunk::Viewport viewport(18, 10);
+    mapComposer.insert(viewport, mapId);
 
     //for(int a = 0; a < 100; a++)
     //    node.moveX(node.getXNode().getPos() + 1);
@@ -51,16 +54,17 @@ int main() {
             }
         }
         //bmap.draw(testVisualize);
-        mapComposer.draw(testVisualize);
+        //mapComposer.draw(testVisualize);
         testVisualize.cycle();
 
         if(node.getXNode().getPos() < 10)
-            node.getXNode().setPos(node.getXNode().getPos() + 1);
+            node.setX(node.getXNode().getPos() + 1);
         else
-            node.getXNode().setPos(node.getXNode().getPos() + 3);
+            node.setX(node.getXNode().getPos() + 3);
         //else
          //   node.moveY(node.getYNode().getPos() + 1);
     }
+    testVisualize.getWindow().close();
 
     std::cout << "Completed all tests." << std::endl;
     return 0;

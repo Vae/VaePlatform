@@ -23,6 +23,7 @@ namespace vae {
 class Map;
 class Tile;
 class Node;
+class Chunklet;
 class ChunkMapComposer;
 
 typedef int coordType;
@@ -44,33 +45,47 @@ public:
     bool setPos(coordType to);
 };
 
-
 //Consumer
 class Viewport: private boost::noncopyable{
     int width, height;
-    coordType x, y;
-public:
-    moodycamel::ConcurrentQueue<vae::react::Action::Ptr> action_queue;
-    typedef std::shared_ptr<Viewport> Ptr;
-    Viewport(): width(3), height(3), x(0), y(0){}
+    int x, y;
 
-    void cycle(float timestamp){
-        while(action_queue.size_approx() > 0){
-            //TODO: do observations
-        }
+    std::shared_ptr<Chunklet> **chunkGrid;
+    int h_index = 0;
+    int v_index = 0;
+
+
+    std::shared_ptr<Map> map;
+    MapId mapId;
+    void assignChunkGrid();
+public:
+    //moodycamel::ConcurrentQueue<vae::react::Action::Ptr> action_queue;
+    typedef std::shared_ptr<Viewport> Ptr;
+    Viewport(int width, int height): width(width), height(height), x(0), y(0) {
+        chunkGrid = new std::shared_ptr<Chunklet> *[height];
+        for (int a = 0; a < width; a++)
+            chunkGrid[a] = new std::shared_ptr<Chunklet>[height];
     }
 
+    void cycle(float timestamp){
+    //    while(action_queue.size_approx() > 0){
+            //TODO: do observations
+    //    }
+    }
+
+    void draw(TestVisualize &testVisualize);
+
     int getWidth() const {return width;}
-    void setWidth(int width) {Viewport::width = width;}
+    //void setWidth(int width) {Viewport::width = width;}
     int getHeight() const {return height;}
-    void setHeight(int height) {Viewport::height = height;}
+    //void setHeight(int height) {Viewport::height = height;}
     coordType getX() const {return x;}
-    void setX(coordType x) {Viewport::x = x;}
+    void setX(coordType x);
     coordType getY() const {return y;}
-    void setY(coordType y) {Viewport::y = y;}
+    void setY(coordType y);
+    std::shared_ptr<Map> getMap() const { return map; }
+    void setMap(std::shared_ptr<Map> to) { map = to; }
 };
-
-
 
 class Chunklet: private boost::noncopyable{
     Tile **tiles;
@@ -107,8 +122,8 @@ public:
     }
 
     void insert(vae::react::Action::Ptr action){
-        for(auto i : viewports)
-            i->action_queue.enqueue(action);
+ //       for(auto i : viewports)
+//            i->action_queue.enqueue(action);
     }
 
     bool insert(Viewport *viewport){
@@ -136,15 +151,27 @@ public:
     Node(): x(*this), y(*this){
         vae::react::Action a;
     }
+    ~Node(){
+        //Unregister map
+    }
     void say(std::string dis){}
 
     void setMap(std::shared_ptr<Map> to){ this->map = to; }
+
+    bool setX(coordType to);
+    bool setY(coordType to);
 
     NodeList& getXNode() { return x; }
     NodeList& getYNode() { return y; }
     Chunklet::Ptr getChunklet() const { return chunk; }
     std::shared_ptr<Map> getMap() const { return map; }
     MapId getMapId() const { return mapId; }
+    void setMapId(MapId to) {
+        //TODO: Some sort of check here, should not be able to set mapId without keeping map in sync
+        mapId = to;
+        if(map.get() != NULL)
+            std::wcout << "Set map ID with a valid map already set!" << std::endl;
+    }
     void setChunklet(Chunklet::Ptr to) { chunk = to; }
 };
 /**
@@ -173,13 +200,22 @@ private:
         return Chunklet::Ptr(new Chunklet(*this, chunkSize, x, y));
         //return std::make_shared(*this, chunkSize, x, y);
     }
-
-/**
- * When a node is insert, based on its location and size, it needs to be added to all consumers of that location.
- * @param node
- * @returns bool
- *  If the node insertion failed, true will return, else false for success.
- */
+    /**
+     * When a viewport is inserted, based on its location and size, all nodes in that location need to be registered to it.
+     * @param viewport
+     * @returns
+     *  If the viewport insertion failed, true will return, else false for success.
+     */
+    bool insert(Viewport &viewport){
+        viewports.push_back(viewport);
+        return false;
+    }
+    /**
+     * When a node is insert, based on its location and size, it needs to be added to all consumers of that location.
+     * @param node
+     * @returns bool
+     *  If the node insertion failed, true will return, else false for success.
+     */
     bool insert(Node &node){
         //TODO: Ensure the node is in bounds defined by the Map shape
         //Ensure the chunk is loaded; if not, load it.
@@ -201,8 +237,10 @@ public:
     typedef std::string Id;
     const int chunkSize;
     const int chunkBitShift;
+    const MapId id;
 
-    Map(int chunkSize): chunkSize(chunkSize), chunkBitShift(chunkSize>>1){
+    Map(MapId myId, int chunkSize): id(myId), chunkSize(chunkSize), chunkBitShift(chunkSize>>1){
+        std::cout << "Map loaded " << id << "<" << this << ">" << std::endl;
     }
 
     void pregenChunks(int xOffset, int yOffset, int size){
@@ -216,10 +254,8 @@ public:
     }
 
     int translateToChunk(coordType dis){
-        if(abs(dis) >= 2) {
-            return (dis + chunkSize - 1) & -chunkSize;
-        }
-        return 0;
+        //return ((dis - 1) / (chunkSize-1)) * (chunkSize-1);
+        return dis / chunkSize;
     }
 
     /**
@@ -249,26 +285,20 @@ public:
     }
 
 
-    /**
-     * When a viewport is inserted, based on its location and size, all nodes in that location need to be registered to it.
-     * @param viewport
-     * @returns
-     *  If the viewport insertion failed, true will return, else false for success.
-     */
-    bool insert(Viewport &viewport){
-        viewports.push_back(viewport);
-        return false;
-    }
+
 
     void draw(TestVisualize &testVisualize){
-        for(auto i = chunks.begin(); i != chunks.end(); ++i)
-            for(int x = 0; x < chunkSize; x++)
-                for(int y = 0; y < chunkSize; y++) {
-                    Chunklet *cx = (*i).get();
-                    testVisualize.drawPoint(x + cx->x_min, y + cx->y_min);
-                }
+        for(auto i = chunks.begin(); i != chunks.end(); ++i){
+            Chunklet *cx = (*i).get();
+            testVisualize.drawRect(cx->x_min, cx->y_min, chunkSize, chunkSize);
+        }
         for(auto i = nodes.begin(); i != nodes.end(); ++i)
             testVisualize.drawPoint(i->get().getXNode().getPos(), i->get().getYNode().getPos(), sf::Color::Magenta);
+        /*for(auto i = viewports.begin(); i != viewports.end(); ++i) {
+            i->get().draw(testVisualize);
+            testVisualize.drawRect(i->get().getX(), i->get().getY(), i->get().getWidth(), i->get().getHeight(),
+                                   sf::Color::Green);
+        }*/
     }
 };
 
@@ -284,43 +314,64 @@ private:
 
     //Gen/load this map
     Map::Ptr _loadMap(Id id){
-        return Map::Ptr(new Map(8));
+        return Map::Ptr(new Map(id, 8));
     }
-public:
-
-    ChunkMapComposer(/*Database connection likely to go here*/){
-    }
-
-    /**
-     * Loads the desired map
-     * @param id of the map to load from the data store
-     * @return any error messages. "" upon success, "%id is already loaded" if map is already loaded.
-     */
+/**
+ * Loads the desired map
+ * @param id of the map to load from the data store
+ * @return any error messages. "" upon success, "%id is already loaded" if map is already loaded.
+ */
     Result loadMap(Id id){
         std::ostringstream result;
         if(maps[id] == NULL)
             maps[id] = _loadMap(id);
         if(maps[id] == NULL)
             result << "Failure: Load map [" << id << "]. "; //Add additional info
+        else
+            maps[id]->pregenChunks(0,0 , 4);
+
         return result.str();
     }
-    bool insert(Node &node){
-        if(maps[node.getMapId()] == NULL) {
-            Result r = loadMap(node.getMapId());
+    bool readyMap(MapId id){
+        if(maps[id] == NULL) {
+            Result r = loadMap(id);
             if(r == ""){
-                if(maps[node.getMapId()]->insert(node)){
-                    //Map didn't want the node
-                    return true;
-                }
-                else {
-                    //success!
-                    node.map = maps[node.getMapId()];
-                    return false;
-                }
+                return false;
             }
             std::cout << r << std::endl;
         }
+        else    //Map is already loaded
+            return false;
         return true;
+    }
+public:
+
+    ChunkMapComposer(/*Database connection likely to go here*/){
+    }
+
+    bool insert(Node &node){
+        if(node.getMapId()  == "")
+            return true;
+        if(readyMap(node.getMapId()))
+            return true;
+        if(maps[node.getMapId()]->insert(node)){
+            //Map didn't want the node
+            return true;
+        }
+        else {
+            //success!
+            node.map = maps[node.getMapId()];
+            return false;
+        }
+        return true;
+    }
+    bool insert(Viewport &vp, MapId id){
+        if(readyMap(id))
+            return true;
+        std::shared_ptr<Map> m = maps[id];
+        vp.setMap(m);
+        m->insert(vp);
+        return false;
     }
 
     Map::Ptr getMap(Id id){

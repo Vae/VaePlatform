@@ -19,10 +19,53 @@ bool vae::vsm::chunk::Chunklet::insert(Node *node){
     return false;
 }
 
+void vae::vsm::chunk::Viewport::assignChunkGrid(){
+    for(int a = 0; a < width; a++)
+        for(int b = 0; b < height; b++) {
+            int xi = (b + v_index) % width;
+            int yi = (a + h_index) % height;
+            int gridX = x + b;
+            int gridY = y + a;
+            chunkGrid[xi][yi] = map->getChunklet(gridX, gridY);
+        }
+}
+void vae::vsm::chunk::Viewport::draw(TestVisualize &testVisualize){
+    for(int a = 0; a < width; a++)
+        for(int b = 0; b < height; b++)
+            if(chunkGrid[a][b] != NULL)
+                testVisualize.drawRect(chunkGrid[a][b]->x_min, chunkGrid[a][b]->y_min, map->chunkSize, map->chunkSize, sf::Color::Black);
+}
+
+bool vae::vsm::chunk::Node::setX(coordType to){
+    Chunklet::Ptr targetChunk = getMap()->getChunklet( getMap()->translateToChunk(to), getChunklet()->chunk_y);
+    if( targetChunk.get() != getChunklet().get() ){
+        if(targetChunk->insert(this)) {
+            std::cout << "Insert failure." << std::endl;
+            return true;
+        }
+        else
+            this->chunk = targetChunk;
+    }
+    x.setPos(to);
+    return false;
+}
+bool vae::vsm::chunk::Node::setY(coordType to){
+    Chunklet::Ptr targetChunk = getMap()->getChunklet(getChunklet()->chunk_x, getMap()->translateToChunk(to));
+    if( targetChunk.get() != getChunklet().get() ){
+        if(targetChunk->insert(this)) {
+            std::cout << "Insert failure." << std::endl;
+            return true;
+        }
+        else
+            this->chunk = targetChunk;
+    }
+    y.setPos(to);
+    return false;
+}
 
 bool vae::vsm::chunk::NodeList::setPos(coordType to)
 {
-    Chunklet::Ptr targetChunk;
+/*    Chunklet::Ptr targetChunk;
     if (to > node.getChunklet()->x_max) {
         //TODO: Ensure we're moving within bounds of the map
         targetChunk = node.getMap()->getChunklet(node.getChunklet()->chunk_x + 1, node.getChunklet()->chunk_y);
@@ -43,6 +86,7 @@ bool vae::vsm::chunk::NodeList::setPos(coordType to)
         std::cout << "Failed to move node." << std::endl;
         return true;
     }
+*/
     this->pos = to;
     return false;
 }
