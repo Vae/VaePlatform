@@ -28,22 +28,41 @@ int main() {
     //Test vae::vsm::chunk::Map functions
     vae::vsm::chunk::ChunkMapComposer mapComposer;
     vae::vsm::chunk::Map::Id mapId("map-zero");
-    vae::vsm::chunk::Map::Ptr cmap = mapComposer.getMap(mapId);
-
     vae::vsm::chunk::Node node;
-    cmap->insert(node);
+    mapComposer.insert(node);
 
-    vae::vsm::chunk::Viewport vp;
-    cmap->insert(vp);
+    //for(int a = 0; a < 100; a++)
+    //    node.moveX(node.getXNode().getPos() + 1);
 
-
-    int x = 0, y = 0;
     while(testVisualize.getWindow().isOpen()){
+        sf::Event event;
+        while (testVisualize.getWindow().pollEvent(event))
+        {
+            switch (event.type)
+            {
+                case sf::Event::Closed:
+                    testVisualize.getWindow().close();
+                    break;
+                case sf::Event::KeyPressed:
+                    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)){}
+                    break;
+                default:
+                    break;
+            }
+        }
         //bmap.draw(testVisualize);
-        cmap->draw(testVisualize);
+        mapComposer.draw(testVisualize);
         testVisualize.cycle();
+
+        if(node.getXNode().getPos() < 10)
+            node.getXNode().setPos(node.getXNode().getPos() + 1);
+        else
+            node.getXNode().setPos(node.getXNode().getPos() + 3);
+        //else
+         //   node.moveY(node.getYNode().getPos() + 1);
     }
 
     std::cout << "Completed all tests." << std::endl;
     return 0;
 }
+

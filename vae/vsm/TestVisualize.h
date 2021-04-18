@@ -7,6 +7,7 @@
 
 #include<iostream>
 #include<SFML/Graphics.hpp>
+#include <boost/noncopyable.hpp>
 
 #include"SkipMap.h"
 
@@ -14,7 +15,7 @@ namespace vae {
 
     namespace vsm {
 
-        class TestVisualize {
+        class TestVisualize: private boost::noncopyable {
         public:
             sf::RenderWindow window;
             sf::Font font;

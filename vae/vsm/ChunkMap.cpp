@@ -10,41 +10,39 @@ bool vae::vsm::chunk::Chunklet::insert(Node *node){
     //To do this, we'll need to have a bunch of high-level logic in place.
 
     if(node->getChunklet() != NULL)
-        node->getChunklet().get()->remove(node);
+        node->getChunklet()->remove(node);
 
     nodes.push_back(node);
-
+    std::cout << "Inserted node." << std::endl;
     //TODO: Inform all viewports of the new node (if applicable)
 
     return false;
 }
 
 
-bool vae::vsm::chunk::Node::moveX(coordType to)
+bool vae::vsm::chunk::NodeList::setPos(coordType to)
 {
-    //Are we walking off a chunk? (moving right)
-    if(to > chunk.get()->x_max){
-        //TODO: Ensure we're moving  within bounds of the map
-
-        Chunklet::Ptr nextChunk = map.get()->map[chunk.get()->chunk_x + 1][chunk.get()->chunk_y];
-        nextChunk->insert(this);
-    }
-    if(to < chunk.get()->x_min){
+    Chunklet::Ptr targetChunk;
+    if (to > node.getChunklet()->x_max) {
         //TODO: Ensure we're moving within bounds of the map
-
-        Chunklet::Ptr nextChunk = map.get()->map[chunk.get()->chunk_x - 1][chunk.get()->chunk_y];
-        nextChunk->insert(this);
+        targetChunk = node.getMap()->getChunklet(node.getChunklet()->chunk_x + 1, node.getChunklet()->chunk_y);
     }
-    if(to > chunk.get()->y_max){
-        //TODO: Ensure we're moving  within bounds of the map
-
-        Chunklet::Ptr nextChunk = map.get()->map[chunk.get()->chunk_x][chunk.get()->chunk_y + 1];
-        nextChunk->insert(this);
+    else if (to < node.getChunklet()->x_min) {
+        targetChunk = node.getMap()->getChunklet(node.getChunklet()->chunk_x - 1, node.getChunklet()->chunk_y);
     }
-    if(to < chunk.get()->y_min){
-        //TODO: Ensure we're moving  within bounds of the map
-
-        Chunklet::Ptr nextChunk = map.get()->map[chunk.get()->chunk_x][chunk.get()->chunk_y - 1];
-        nextChunk->insert(this);
+    else if (to > node.getChunklet()->y_max) {
+        targetChunk = node.getMap()->getChunklet(node.getChunklet()->chunk_x, node.getChunklet()->chunk_y + 1);
     }
+    else if (to < node.getChunklet()->y_min) {
+        targetChunk = node.getMap()->getChunklet(node.getChunklet()->chunk_x, node.getChunklet()->chunk_y - 1);
+    }
+    else
+        targetChunk = node.getChunklet();
+
+    if(targetChunk->insert(&node)){
+        std::cout << "Failed to move node." << std::endl;
+        return true;
+    }
+    this->pos = to;
+    return false;
 }

@@ -11,6 +11,7 @@
 #include <list>
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
+#include <boost/noncopyable.hpp>
 
 #include "TestVisualize.h"
 #include "../react/Action.h"
@@ -22,15 +23,17 @@ namespace vae {
 class Map;
 class Tile;
 class Node;
+class ChunkMapComposer;
 
 typedef int coordType;
+typedef std::string MapId;
 
-class Tile{
+class Tile: private boost::noncopyable{
     //placeholder
     int tileNum;
 };
 
-class NodeList{
+class NodeList: private boost::noncopyable{
     Node &node;
     coordType pos;
     NodeList *p, *n;
@@ -38,11 +41,12 @@ public:
     NodeList(Node &parent): node(parent), pos(0){
     }
     coordType getPos() const {return pos;}
+    bool setPos(coordType to);
 };
 
 
 //Consumer
-class Viewport{
+class Viewport: private boost::noncopyable{
     int width, height;
     coordType x, y;
 public:
@@ -68,7 +72,7 @@ public:
 
 
 
-class Chunklet{
+class Chunklet: private boost::noncopyable{
     Tile **tiles;
 
     /**
@@ -114,17 +118,19 @@ public:
     bool insert(Node *node);
     void remove(Node *node){
         //TODO: Inform viewports that the node left
-
         nodes.remove(node);
+
+        std::cout << "Removed node." << std::endl;
     }
-    void test(){}
 };
 
 //Producer
-class Node{
+class Node: private boost::noncopyable {
+    friend class ChunkMapComposer;
     NodeList x, y;
     Chunklet::Ptr chunk;
     std::shared_ptr<Map> map;
+    MapId mapId;
 public:
     typedef std::shared_ptr<Node> Ptr;
     Node(): x(*this), y(*this){
@@ -134,35 +140,28 @@ public:
 
     void setMap(std::shared_ptr<Map> to){ this->map = to; }
 
-    NodeList getXNode() const { return x;}
-    NodeList getYNode() const { return y;}
+    NodeList& getXNode() { return x; }
+    NodeList& getYNode() { return y; }
     Chunklet::Ptr getChunklet() const { return chunk; }
-
-    bool moveX(coordType to);
+    std::shared_ptr<Map> getMap() const { return map; }
+    MapId getMapId() const { return mapId; }
+    void setChunklet(Chunklet::Ptr to) { chunk = to; }
 };
 /**
  * Holds Nodes
  */
-class Map {
+class Map: private boost::noncopyable {
+    friend class ChunkMapComposer;
 private:
     int addChunk(Chunklet::Ptr dis, coordType x, coordType y){
         chunks.push_back(dis);
         map[x].emplace(y, dis);
         return 0;
     }
-public:
-    typedef std::shared_ptr<Map> Ptr;
-    typedef std::string Id;
-    const int chunkSize;
-    const int chunkBitShift;
     std::map<coordType, std::map<coordType, Chunklet::Ptr>> map;
     std::list<Chunklet::Ptr> chunks;
-
     std::list<std::reference_wrapper<Node>> nodes;
     std::list<std::reference_wrapper<Viewport>> viewports;
-
-    Map(int chunkSize): chunkSize(chunkSize), chunkBitShift(chunkSize>>1){
-    }
     /**
      *
      * @param x
@@ -170,8 +169,42 @@ public:
      * @return pointer to the loaded chunk
      */
     Chunklet::Ptr loadChunk(int x, int y){
+        std::cout << "New chunk " << x << " " << y << std::endl;
         return Chunklet::Ptr(new Chunklet(*this, chunkSize, x, y));
+        //return std::make_shared(*this, chunkSize, x, y);
     }
+
+/**
+ * When a node is insert, based on its location and size, it needs to be added to all consumers of that location.
+ * @param node
+ * @returns bool
+ *  If the node insertion failed, true will return, else false for success.
+ */
+    bool insert(Node &node){
+        //TODO: Ensure the node is in bounds defined by the Map shape
+        //Ensure the chunk is loaded; if not, load it.
+        int chunk_x = translateToChunk(node.getXNode().getPos());
+        int chunk_y = translateToChunk(node.getYNode().getPos());
+
+        Chunklet::Ptr dest = getChunklet(chunk_x, chunk_y);
+
+        if(dest == NULL || dest->insert(&node)) {
+            std::cout << "Failed to insert node." << std::endl;
+            return true;
+        }
+        node.setChunklet(dest);
+        nodes.push_back(node);
+        return false;
+    }
+public:
+    typedef std::shared_ptr<Map> Ptr;
+    typedef std::string Id;
+    const int chunkSize;
+    const int chunkBitShift;
+
+    Map(int chunkSize): chunkSize(chunkSize), chunkBitShift(chunkSize>>1){
+    }
+
     void pregenChunks(int xOffset, int yOffset, int size){
         for(int ix = 0 ; ix < size ; ix++){
             for(int iy = 0 ; iy < size ; iy++) {
@@ -182,7 +215,7 @@ public:
         }
     }
 
-    int getChunkAt(coordType dis){
+    int translateToChunk(coordType dis){
         if(abs(dis) >= 2) {
             return (dis + chunkSize - 1) & -chunkSize;
         }
@@ -190,36 +223,31 @@ public:
     }
 
     /**
-     * When a node is insert, based on its location and size, it needs to be added to all consumers of that location.
-     * @param node
-     * @returns bool
-     *  If the node insertion failed, true will return, else false for success.
+     * Will return a chunk if possible.
+     * @param x
+     * @param y
+     * @return
      */
-    bool insert(Node &node){
-        //TODO: Ensure the node is in bounds defined by the Map shape
-        //Ensure the chunk is loaded; if not, load it.
-        int chunk_x = getChunkAt(node.getXNode().getPos());
-        int chunk_y = getChunkAt(node.getYNode().getPos());
-        Chunklet::Ptr dest = map[chunk_x][chunk_y];
+    Chunklet::Ptr getChunklet(int x, int y){
 
-        if(dest == NULL){
-            //TODO: Ensure this doesn't fail? It shouldn't, but could it?
-            dest.reset(loadChunk(chunk_x, chunk_y).get());
-            if(dest == NULL) {
-                std::cout << "Failed to place node at dest." << std::endl;
-                return true;
+        //If it's not loaded, load it.
+        if(map[x][y] == NULL){
+            //TODO: if it doesn't exist, generate it
+            Chunklet::Ptr chunk = loadChunk(x, y);
+            if(chunk == NULL) {
+                std::cout << "Failed to load chunk " << x << " " << y << std::endl;
+            }else{
+                chunks.push_back(chunk);
+                map[x][y] = chunk;
+                return chunk;
             }
-            addChunk(dest, chunk_x, chunk_y);
         }
-
-        if(dest->insert(&node)) {
-            std::cout << "Failed to insert node." << std::endl;
-            return true;
+        else{
+            return map[x][y];
         }
-
-        nodes.push_back(node);
-        return false;
+        return NULL;
     }
+
 
     /**
      * When a viewport is inserted, based on its location and size, all nodes in that location need to be registered to it.
@@ -247,7 +275,7 @@ public:
 /**
  * Prepares all maps: for now we'll pregen/load everything immediately
  */
-class ChunkMapComposer{
+class ChunkMapComposer: private boost::noncopyable{
 public:
     typedef std::string Result;
     typedef Map::Id Id;
@@ -276,6 +304,25 @@ public:
             result << "Failure: Load map [" << id << "]. "; //Add additional info
         return result.str();
     }
+    bool insert(Node &node){
+        if(maps[node.getMapId()] == NULL) {
+            Result r = loadMap(node.getMapId());
+            if(r == ""){
+                if(maps[node.getMapId()]->insert(node)){
+                    //Map didn't want the node
+                    return true;
+                }
+                else {
+                    //success!
+                    node.map = maps[node.getMapId()];
+                    return false;
+                }
+            }
+            std::cout << r << std::endl;
+        }
+        return true;
+    }
+
     Map::Ptr getMap(Id id){
         if(maps[id] == NULL) {
             Result r = loadMap(id);
@@ -283,6 +330,10 @@ public:
                 return maps[id];
         }
         return 0;
+    }
+    void draw(TestVisualize &testVisualize){
+        if(maps.size() > 0)
+            maps.begin()->second->draw(testVisualize);
     }
     ~ChunkMapComposer(){
     //    for (std::map<std::string, Map*>::iterator i = maps.begin(); i != maps.end(); ++i)
