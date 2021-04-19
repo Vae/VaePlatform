@@ -9,7 +9,7 @@
 #include<SFML/Graphics.hpp>
 #include <boost/noncopyable.hpp>
 
-#include"SkipMap.h"
+#include "../../defs.h"
 
 namespace vae {
 
@@ -18,10 +18,14 @@ namespace vae {
         class TestVisualize: private boost::noncopyable {
         public:
             sf::RenderWindow window;
+            std::string title;
             sf::Font font;
         public:
+            ~TestVisualize(){
+                std::cout << "Kill Window" << std::endl;
+            }
             sf::RenderWindow& getWindow() { return window; }
-            TestVisualize() : window(sf::VideoMode(800, 600), "Vaewyn Server Mapping Visualizer") {
+            TestVisualize(std::string title) : window(sf::VideoMode(800, 600), title), title(title) {
                 window.clear(sf::Color::Blue);
                 if (!font.loadFromFile("/usr/share/fonts/truetype/freefont/FreeMono.ttf")) {
                     std::cerr << "Failed to load font FreeMono.ttf" << std::endl;
@@ -74,25 +78,34 @@ namespace vae {
                 rect.setFillColor(sf::Color::Transparent);
                 window.draw(rect);
             }
+            std::function<void(sf::Keyboard::Key)> keyboardFunction;
+            void regKeyboard(std::function<void(sf::Keyboard::Key)> f){
+                this->keyboardFunction = f;
+            }
 
+            std::function<void()> drawFunction;
+            void regDraw(std::function<void()> f){
+                this->drawFunction = f;
+            }
             void cycle() {
                 if (window.isOpen()) {
                     sf::Event event;
                     while (window.pollEvent(event)) {
-                        // "close requested" event: we close the window
-                        if (event.type == sf::Event::Closed)
-                            window.close();
+                        switch (event.type)
+                        {
+                            case sf::Event::Closed:
+                                window.close();
+                                break;
+                            case sf::Event::KeyPressed:
+                                keyboardFunction(event.key.code);
+                                break;
+                            default:
+                                break;
+                        }
                     }
-
-
-
-                    // draw everything here...
-                    // window.draw(...);
-
+                    drawFunction();
                     window.display();
-
-                    window.clear(sf::Color::Blue);
-                    // clear the window with black color
+                    window.clear(sf::Color::Black);
                 }
             }
         };
