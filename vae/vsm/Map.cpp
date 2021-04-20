@@ -26,7 +26,6 @@ void vae::vsm::chunk::Viewport::setY(coordType to){
     int h_index = -9999999;
     int map_index = -9999999;
 
-
     if(diff > 0){
         for(; y < to; ++y) {
             h_index = y % height;   //this is where in the grid we'll be overwriting:
@@ -147,7 +146,7 @@ bool vae::vsm::chunk::NodeList::setPos(coordType to)
 {
 /*    Chunklet::Ptr targetChunk;
     if (to > node.getChunklet()->x_max) {
-        //TODO: Ensure we're moving within bounds of the map
+        //TODO: Ensure we're moving within bounds of the chunkMap
         targetChunk = node.getMap()->getChunklet(node.getChunklet()->chunk_x + 1, node.getChunklet()->chunk_y);
     }
     else if (to < node.getChunklet()->x_min) {

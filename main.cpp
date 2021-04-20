@@ -8,7 +8,28 @@
 #include "vae/vsm/BasicMap.h"
 
 #include "vae/vsm/Map.h"
+#include "vae/react/Action.h"
 #include "olib/concurrentqueue.h"
+
+/**
+ * Basic mapping
+ *  Node
+ *  Viewport
+ *  Map
+ *  Composer
+ * Actions: sub/pub
+ *  Actor
+ *  Observer
+ * Thread testing
+ * Scripting
+ *  Basic scripting interface
+ * Interactions
+ *  Simple stats
+ *  Simple battle testing
+ *
+ *  At any point:
+ *   Logging
+ */
 
 int main() {
     //std::cout << "BoostSerializationTest: " << BoostSerializationTest::boostSerializationTest() << std::endl;
@@ -22,12 +43,11 @@ int main() {
     assert(found && item == 25);
      */
 
-
     vae::vsm::TestVisualize testVisualize("Vaewyn Server Mapping Visualizer");
 
     //Test vae::vsm::chunk::Map functions
     vae::vsm::chunk::Composer composer("???");
-    vae::vsm::chunk::Map::Id mapId("map-zero");
+    vae::vsm::chunk::Map::Id mapId("chunkMap-zero");
     vae::vsm::chunk::Node node;
     node.setMapId(mapId);
     composer.insert(node);
@@ -46,7 +66,9 @@ int main() {
             case sf::Keyboard::Key::A: node.setX(node.getXNode().getPos() - 1); break;
             case sf::Keyboard::Key::S: node.setY(node.getYNode().getPos() + 1); break;
             case sf::Keyboard::Key::D: node.setX(node.getXNode().getPos() + 1); break;
-            case sf::Keyboard::Key::Escape: testVisualize.getWindow().close();
+
+            case sf::Keyboard::Key::Space: node.say("Hello."); break;
+            case sf::Keyboard::Key::Escape: testVisualize.getWindow().close(); break;
         }
     };
     testVisualize.regKeyboard(beep);

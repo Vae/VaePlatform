@@ -22,7 +22,7 @@ if(Boost_FOUND)
 
     file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
 
-    add_executable(VaeTesting main.cpp BoostSerializationTest.cpp BoostSerializationTest.h PostgreSQLTest.cpp PostgreSQLTest.h LuaBindTest.cpp LuaBindTest.h vae/vsm/SkipMap.cpp vae/vsm/SkipMap.h vae/vsm/TestVisualize.cpp vae/vsm/TestVisualize.h vae/vsm/ChunkMap.cpp vae/vsm/ChunkMap.h vae/vsm/BasicMap.cpp vae/vsm/BasicMap.h vae/react/Action.cpp vae/react/Action.h vae/react/Observer.cpp vae/react/Observer.h vae/react/EntityActions.cpp vae/react/EntityActions.h vae/vsm/Map.cpp vae/vsm/Map.h)
+    add_executable(VaeTesting main.cpp BoostSerializationTest.cpp BoostSerializationTest.h PostgreSQLTest.cpp PostgreSQLTest.h LuaBindTest.cpp LuaBindTest.h vae/vsm/SkipMap.cpp vae/vsm/SkipMap.h vae/vsm/TestVisualize.cpp vae/vsm/TestVisualize.h vae/vsm/ChunkMap.cpp vae/vsm/ChunkMap.h vae/vsm/BasicMap.cpp vae/vsm/BasicMap.h vae/react/Action.cpp vae/react/Action.h vae/react/Observer.cpp vae/react/Observer.h vae/react/EntityActions.cpp vae/react/EntityActions.h vae/vsm/Map.cpp vae/vsm/Map.h vae/ThreadManager.cpp vae/ThreadManager.h)
 
     target_link_libraries(VaeTesting ${Boost_LIBRARIES} ${PQXX_LIB} ${PQ_LIB})
 endif()

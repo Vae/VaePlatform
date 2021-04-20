@@ -10,6 +10,7 @@
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
 #include <boost/noncopyable.hpp>
+#include <boost/numeric/ublas/vector_sparse.hpp>
 
 #include "TestVisualize.h"
 #include "../react/Action.h"
@@ -57,7 +58,7 @@ namespace vae {
                 MapId mapId;
                 void assignChunkGrid();
             public:
-                moodycamel::ConcurrentQueue<vae::react::Action::Ptr> action_queue;
+                moodycamel::ConcurrentQueue<std::shared_ptr<vae::react::Action>> action_queue;
                 typedef std::shared_ptr<Viewport> Ptr;
                 Viewport(int width, int height): width(width), height(height), x(0), y(0), chunkGrid(width, std::vector<std::shared_ptr<Chunklet>>(height)) {
                 }
@@ -123,7 +124,7 @@ namespace vae {
                     std::cout << "Chunklet lost " << x_min << " " << y_min << std::endl;
                 }
 
-                void insert(vae::react::Action::Ptr action){
+                void insert(vae::react::Action<Node>::Ptr action){
                     //       for(auto i : viewports)
 //            i->action_queue.enqueue(action);
                 }
@@ -160,9 +161,13 @@ namespace vae {
                     vae::react::Action a;
                 }
                 ~Node(){
-                    //Unregister map
+                    //Unregister chunkMap
                 }
-                void say(std::string dis){}
+                vae::react::Action<Node>::Ptr say(std::string dis){
+                    auto act = [&](Node::Ptr tgt){
+                    };
+                    return new vae::react::Action<Node>(this, act);
+                }
                 void setMap(std::shared_ptr<Map> to){ this->map = to; }
 
                 bool setX(coordType to);
@@ -174,10 +179,10 @@ namespace vae {
                 std::shared_ptr<Map> getMap() const { return map; }
                 MapId getMapId() const { return mapId; }
                 void setMapId(MapId to) {
-                    //TODO: Some sort of check here, should not be able to set mapId without keeping map in sync
+                    //TODO: Some sort of check here, should not be able to set mapId without keeping chunkMap in sync
                     mapId = to;
                     if(map.get() != NULL)
-                        std::wcout << "Set map ID with a valid map already set!" << std::endl;
+                        std::wcout << "Set chunkMap ID with a valid chunkMap already set!" << std::endl;
                 }
                 void setChunklet(Chunklet::Ptr to) { chunk = to; }
             };
@@ -190,12 +195,13 @@ namespace vae {
             private:
                 int addChunk(Chunklet::Ptr dis, coordType x, coordType y){
                     chunks.push_back(dis);
-                    map[x].emplace(y, dis);
+                    chunkMap[x].emplace(y, dis);
                     return 0;
                 }
-                std::map<coordType, std::map<coordType, Chunklet::Ptr>> map;
+                std::map<coordType, std::map<coordType, Chunklet::Ptr>> chunkMap;
                 std::list<Chunklet::Ptr> chunks;
                 std::list<std::reference_wrapper<Node>> nodes;
+                boost::numeric::ublas::vector_sparse<Node::Ptr> nodeMap;
                 std::list<std::reference_wrapper<Viewport>> viewports;
                 /**
                  *
@@ -247,7 +253,7 @@ namespace vae {
                 const int chunkBitShift;
                 const MapId id;
 
-                Map(MapId myId, int chunkSize): id(myId), chunkSize(chunkSize), chunkBitShift(chunkSize>>1){
+                Map(MapId myId, int chunkSize): id(myId), chunkSize(chunkSize), chunkBitShift(chunkSize>>1), nodeMap(1048575, 1048575){
                     std::cout << "Map loaded " << id << "<" << this << ">" << std::endl;
                 }
 
@@ -275,19 +281,19 @@ namespace vae {
                 Chunklet::Ptr getChunklet(int x, int y){
 
                     //If it's not loaded, load it.
-                    if(map[x][y] == NULL){
+                    if(chunkMap[x][y] == NULL){
                         //TODO: if it doesn't exist, generate it
                         Chunklet::Ptr chunk = loadChunk(x, y);
                         if(chunk == NULL) {
                             std::cout << "Failed to load chunk " << x << " " << y << std::endl;
                         }else{
                             chunks.push_back(chunk);
-                            map[x][y] = chunk;
+                            chunkMap[x][y] = chunk;
                             return chunk;
                         }
                     }
                     else{
-                        return map[x][y];
+                        return chunkMap[x][y];
                     }
                     return NULL;
                 }
@@ -319,21 +325,21 @@ namespace vae {
                 std::map<std::string, Map::Ptr> maps;
                 std::string connectionString;
 
-                //Gen/load this map
+                //Gen/load this chunkMap
                 Map::Ptr _loadMap(Id id){
                     return Map::Ptr(new Map(id, 8));
                 }
 /**
- * Loads the desired map
- * @param id of the map to load from the data store
- * @return any error messages. "" upon success, "%id is already loaded" if map is already loaded.
+ * Loads the desired chunkMap
+ * @param id of the chunkMap to load from the data store
+ * @return any error messages. "" upon success, "%id is already loaded" if chunkMap is already loaded.
  */
                 Result loadMap(Id id){
                     std::ostringstream result;
                     if(maps[id] == NULL)
                         maps[id] = _loadMap(id);
                     if(maps[id] == NULL)
-                        result << "Failure: Load map [" << id << "]. "; //Add additional info
+                        result << "Failure: Load chunkMap [" << id << "]. "; //Add additional info
                     else
                         maps[id]->pregenChunks(0,0 , 4);
 
