@@ -16,8 +16,8 @@ namespace vae {
         }
     };
 
-
     class ThreadManager: private boost::noncopyable {
+        boost::thread_group threads;
     public:
         ThreadManager(int threads){
 

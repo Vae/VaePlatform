@@ -1,6 +1,9 @@
 #include "defs.h"
 
 #include <iostream>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/signal_set.hpp>
 #include "BoostSerializationTest.h"
 #include "PostgreSQLTest.h"
 
@@ -11,12 +14,17 @@
 #include "vae/react/Action.h"
 #include "olib/concurrentqueue.h"
 
+#include "vae/log.h"
+#include "vae/LogService.h"
+#include "vae/Datastore.h"
+#include "vae/TestService.h"
+
 /**
  * Basic mapping
  *  Node
  *  Viewport
  *  Map
- *  Composer
+ *  Composer (service)
  * Actions: sub/pub
  *  Actor
  *  Observer
@@ -28,12 +36,47 @@
  *  Simple battle testing
  *
  *  At any point:
- *   Logging
+ *   Logging (service)
+ *   Database (service)
  */
 
+//#define LOG(level) vl::level(logInstance).start(__FILE__, __LINE__)
+
 int main() {
+    boost::asio::io_service ioService;
+
+    LogService<vl::LogEngine> logService(ioService);
+
+    auto f = [&](const std::string &message){
+        std::cout << message << std::endl;
+    };
+    logInstance.setLoggingFunction(f);
+
+    LOG(Debug) << "Start.";
+
+    Datastore ds;
+    ds.connect("dbname = test1 user = root password = pass hostaddr = 192.168.99.10 port = 25432");
+
+    TestService testService(ioService);
+
+    //services::FILELog::ReportingLevel() = logDEBUG3;
     //std::cout << "BoostSerializationTest: " << BoostSerializationTest::boostSerializationTest() << std::endl;
     //std::cout << "PostgreSQLTest: " << PostgreSQLTest::postgreSQLTest() << std::endl;
+
+    try
+    {
+        //boost::asio::io_context ioContext(1);
+
+        boost::asio::signal_set signals(ioService, SIGINT, SIGTERM);
+        signals.async_wait([&](auto, auto){ ioService.stop(); });
+
+        ioService.run();
+    }
+    catch (std::exception& e)
+    {
+        std::printf("Exception: %s\n", e.what());
+    }
+
 
     /*
     moodycamel::ConcurrentQueue<int> q;
@@ -43,47 +86,5 @@ int main() {
     assert(found && item == 25);
      */
 
-    vae::vsm::TestVisualize testVisualize("Vaewyn Server Mapping Visualizer");
-
-    //Test vae::vsm::chunk::Map functions
-    vae::vsm::chunk::Composer composer("???");
-    vae::vsm::chunk::Map::Id mapId("chunkMap-zero");
-    vae::vsm::chunk::Node node;
-    node.setMapId(mapId);
-    composer.insert(node);
-    vae::vsm::chunk::Viewport viewport(2, 3,5, 5);
-    composer.insert(viewport, mapId);
-
-    auto beep = [&](sf::Keyboard::Key key)  {
-        std::cout << key << "\t\t\t";
-        switch(key){
-            case sf::Keyboard::Key::Down: viewport.setY(viewport.getY() + 3); break;
-            case sf::Keyboard::Key::Up: viewport.setY(viewport.getY() - 4); break;
-            case sf::Keyboard::Key::Left: viewport.setX(viewport.getX() - 4); break;
-            case sf::Keyboard::Key::Right: viewport.setX(viewport.getX() + 3); break;
-
-            case sf::Keyboard::Key::W: node.setY(node.getYNode().getPos() - 1); break;
-            case sf::Keyboard::Key::A: node.setX(node.getXNode().getPos() - 1); break;
-            case sf::Keyboard::Key::S: node.setY(node.getYNode().getPos() + 1); break;
-            case sf::Keyboard::Key::D: node.setX(node.getXNode().getPos() + 1); break;
-
-            case sf::Keyboard::Key::Space: node.say("Hello."); break;
-            case sf::Keyboard::Key::Escape: testVisualize.getWindow().close(); break;
-        }
-    };
-    testVisualize.regKeyboard(beep);
-
-    auto drawer = [&](){
-        composer.draw(testVisualize);
-    };
-    testVisualize.regDraw(drawer);
-
-    while(testVisualize.getWindow().isOpen()){
-        testVisualize.cycle();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        node.setX(node.getXNode().getPos() + 1);
-    }
-
-    std::cout << "Completed all tests." << std::endl;
     return 0;
 }

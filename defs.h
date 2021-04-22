@@ -7,6 +7,8 @@
 
 typedef signed long EntityID;
 
+#define DEB(x) std::cout << #x << ": " << x
+
 //These are the double's max range that'll round to an integer:
 #define STAT_INT_MAX 9007199254740992
 #define STAT_INT_MIN -9007199254740992

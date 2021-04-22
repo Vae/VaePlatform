@@ -15,7 +15,7 @@
 #include "TestVisualize.h"
 #include "../react/Action.h"
 #include "../../olib/concurrentqueue.h"
-
+#include "../../vae/log.h"
 
 namespace vae {
     namespace vsm {
@@ -58,7 +58,7 @@ namespace vae {
                 MapId mapId;
                 void assignChunkGrid();
             public:
-                moodycamel::ConcurrentQueue<std::shared_ptr<vae::react::Action>> action_queue;
+                //moodycamel::ConcurrentQueue<std::shared_ptr<vae::react::Action>> action_queue;
                 typedef std::shared_ptr<Viewport> Ptr;
                 Viewport(int width, int height): width(width), height(height), x(0), y(0), chunkGrid(width, std::vector<std::shared_ptr<Chunklet>>(height)) {
                 }
@@ -66,9 +66,9 @@ namespace vae {
                 }
 
                 void cycle(float timestamp){
-                        while(action_queue.size_approx() > 0){
-                            //TODO: do observations
-                        }
+                //        while(action_queue.size_approx() > 0){
+                //            //TODO: do observations
+                //        }
                 }
 
                 void draw(TestVisualize &testVisualize);
@@ -121,7 +121,7 @@ namespace vae {
                         tiles[a] = new Tile[chunkSize];
                 }
                 ~Chunklet(){
-                    std::cout << "Chunklet lost " << x_min << " " << y_min << std::endl;
+                    LOG(Debug) << "Chunklet lost " << x_min << " " << y_min;
                 }
 
                 void insert(vae::react::Action<Node>::Ptr action){
@@ -158,16 +158,15 @@ namespace vae {
             public:
                 typedef std::shared_ptr<Node> Ptr;
                 Node(): x(*this), y(*this){
-                    vae::react::Action a;
                 }
                 ~Node(){
                     //Unregister chunkMap
                 }
-                vae::react::Action<Node>::Ptr say(std::string dis){
+                /*vae::react::Action<Node>::Ptr say(std::string dis){
                     auto act = [&](Node::Ptr tgt){
                     };
                     return new vae::react::Action<Node>(this, act);
-                }
+                }*/
                 void setMap(std::shared_ptr<Map> to){ this->map = to; }
 
                 bool setX(coordType to);
@@ -182,7 +181,7 @@ namespace vae {
                     //TODO: Some sort of check here, should not be able to set mapId without keeping chunkMap in sync
                     mapId = to;
                     if(map.get() != NULL)
-                        std::wcout << "Set chunkMap ID with a valid chunkMap already set!" << std::endl;
+                        LOG(Warn) << "Set chunkMap ID with a valid chunkMap already set!";
                 }
                 void setChunklet(Chunklet::Ptr to) { chunk = to; }
             };
@@ -201,7 +200,7 @@ namespace vae {
                 std::map<coordType, std::map<coordType, Chunklet::Ptr>> chunkMap;
                 std::list<Chunklet::Ptr> chunks;
                 std::list<std::reference_wrapper<Node>> nodes;
-                boost::numeric::ublas::vector_sparse<Node::Ptr> nodeMap;
+                //boost::numeric::ublas::mapped_matrix<int> nodeMap;
                 std::list<std::reference_wrapper<Viewport>> viewports;
                 /**
                  *
@@ -239,7 +238,7 @@ namespace vae {
                     Chunklet::Ptr dest = getChunklet(chunk_x, chunk_y);
 
                     if(dest == NULL || dest->insert(&node)) {
-                        std::cout << "Failed to insert node." << std::endl;
+                        LOG(Warn) << "Failed to insert node.";
                         return true;
                     }
                     node.setChunklet(dest);
@@ -253,8 +252,8 @@ namespace vae {
                 const int chunkBitShift;
                 const MapId id;
 
-                Map(MapId myId, int chunkSize): id(myId), chunkSize(chunkSize), chunkBitShift(chunkSize>>1), nodeMap(1048575, 1048575){
-                    std::cout << "Map loaded " << id << "<" << this << ">" << std::endl;
+                Map(MapId myId, int chunkSize): id(myId), chunkSize(chunkSize), chunkBitShift(chunkSize>>1)/*, nodeMap(1048575, 1048575)*/{
+                    LOG(Info) << "Map loaded " << id << "<" << this << ">";
                 }
 
                 void pregenChunks(int xOffset, int yOffset, int size){
@@ -285,7 +284,7 @@ namespace vae {
                         //TODO: if it doesn't exist, generate it
                         Chunklet::Ptr chunk = loadChunk(x, y);
                         if(chunk == NULL) {
-                            std::cout << "Failed to load chunk " << x << " " << y << std::endl;
+                            LOG(Warn) << "Failed to load chunk " << x << " " << y;
                         }else{
                             chunks.push_back(chunk);
                             chunkMap[x][y] = chunk;
@@ -338,8 +337,10 @@ namespace vae {
                     std::ostringstream result;
                     if(maps[id] == NULL)
                         maps[id] = _loadMap(id);
-                    if(maps[id] == NULL)
+                    if(maps[id] == NULL) {
                         result << "Failure: Load chunkMap [" << id << "]. "; //Add additional info
+                        LOG(Warn) << result.str();
+                    }
                     else
                         maps[id]->pregenChunks(0,0 , 4);
 
@@ -361,7 +362,7 @@ namespace vae {
 
             public:
                 ~Composer(){
-                    std::cout << "Close MapComposer." << std::endl;
+                    LOG(Info) << "Close MapComposer.";
                 }
                 Composer(std::string connectionString): connectionString(connectionString){
                 }

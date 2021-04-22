@@ -9,7 +9,7 @@
 
 namespace vae {
     namespace react {
-
+/*
 class EntityTalk: public Action {
 public:
     const std::string message;
@@ -19,7 +19,7 @@ public:
 
     void enqueue(){}
 };
-
+*/
     }   //namespace react
 }   //namespace vae
 #endif //BOOSTTESTING_ENTITYACTIONS_H
