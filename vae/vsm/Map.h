@@ -5,8 +5,9 @@
 #ifndef BOOSTTESTING_MAP_H
 #define BOOSTTESTING_MAP_H
 #include <vector>
-#include <iostream>
 #include <list>
+#include <shared_mutex>
+
 #include <boost/thread.hpp>
 #include <boost/chrono.hpp>
 #include <boost/noncopyable.hpp>
@@ -25,6 +26,13 @@ namespace vae {
             class Node;
             class Chunklet;
             class Composer;
+
+            typedef std::shared_mutex Lock;
+            typedef std::unique_lock< Lock > WriteLock;
+            typedef std::shared_lock< Lock > ReadLock;
+#define RLOCK ReadLock r_lock(lock);
+#define WLOCK WriteLock w_lock(lock);
+
 
             typedef int coordType;
             typedef std::string MapId;
@@ -92,6 +100,8 @@ namespace vae {
 
             class Chunklet: private boost::noncopyable{
                 Tile **tiles;
+                Lock lock;
+                boost::asio::io_context::strand strand;
 
                 /**
                  * Since I want to try and have each Chunklet be on its own thread, they'll have to maintain their own lists.
@@ -109,21 +119,19 @@ namespace vae {
                 const int x_max;
                 const int y_max;
 
-                Chunklet(Map &parent, int chunkSize, int x, int y):
-                        chunk_x(x),
-                        chunk_y(y),
-                        x_min(x * chunkSize),
-                        y_min(y * chunkSize),
-                        x_max(x * chunkSize + (chunkSize - 1)),
-                        y_max(y * chunkSize + (chunkSize - 1)){
-                    tiles = new Tile*[chunkSize];
-                    for(int a = 0; a < chunkSize; a++)
-                        tiles[a] = new Tile[chunkSize];
-                }
+                Chunklet(Map &parent, int chunkSize, int x, int y);
                 ~Chunklet(){
                     LOG(Debug) << "Chunklet lost " << x_min << " " << y_min;
                 }
 
+                //void ReadFunction(){
+                //    ReadLock r_lock(lock);
+                //    //Do reader stuff
+                //}
+                //void WriteFunction(){
+                //    WriteLock w_lock(lock);
+                //    //Do writer stuff
+                //}
                 void insert(vae::react::Action<Node>::Ptr action){
                     //       for(auto i : viewports)
 //            i->action_queue.enqueue(action);
@@ -137,11 +145,13 @@ namespace vae {
                     viewports.remove(viewport);
                 }
                 void draw(TestVisualize &testVisualize){
+                    RLOCK
                     for(auto i = viewports.begin(); i != viewports.end(); ++i)
                         testVisualize.drawRect(x_min + 4, y_min + 4, 3, 3, sf::Color::Cyan);
                 }
                 bool insert(Node *node);
                 void remove(Node *node){
+                    WLOCK
                     //TODO: Inform viewports that the node left
                     nodes.remove(node);
                     //std::cout << "Removed node." << std::endl;
@@ -192,6 +202,8 @@ namespace vae {
             class Map: private boost::noncopyable {
                 friend class Composer;
             private:
+                Lock lock;
+                Composer& composer;
                 int addChunk(Chunklet::Ptr dis, coordType x, coordType y){
                     chunks.push_back(dis);
                     chunkMap[x].emplace(y, dis);
@@ -223,6 +235,7 @@ namespace vae {
                     viewports.push_back(viewport);
                     return false;
                 }
+
                 /**
                  * When a node is insert, based on its location and size, it needs to be added to all consumers of that location.
                  * @param node
@@ -245,6 +258,14 @@ namespace vae {
                     nodes.push_back(node);
                     return false;
                 }
+
+                //Will get a rectangle lock
+                void grabChunkLock(int x, int y){
+
+                }
+                Map(Composer &composer, MapId myId, int chunkSize): composer(composer), id(myId), chunkSize(chunkSize), chunkBitShift(chunkSize>>1)/*, nodeMap(1048575, 1048575)*/{
+                    LOG(Info) << "Map loaded " << id << "<" << this << ">";
+                }
             public:
                 typedef std::shared_ptr<Map> Ptr;
                 typedef std::string Id;
@@ -252,11 +273,10 @@ namespace vae {
                 const int chunkBitShift;
                 const MapId id;
 
-                Map(MapId myId, int chunkSize): id(myId), chunkSize(chunkSize), chunkBitShift(chunkSize>>1)/*, nodeMap(1048575, 1048575)*/{
-                    LOG(Info) << "Map loaded " << id << "<" << this << ">";
-                }
+                Composer& getComposer() { return composer; }
 
                 void pregenChunks(int xOffset, int yOffset, int size){
+                    WLOCK
                     for(int ix = 0 ; ix < size ; ix++){
                         for(int iy = 0 ; iy < size ; iy++) {
                             addChunk(
@@ -278,7 +298,7 @@ namespace vae {
                  * @return
                  */
                 Chunklet::Ptr getChunklet(int x, int y){
-
+                    WLOCK
                     //If it's not loaded, load it.
                     if(chunkMap[x][y] == NULL){
                         //TODO: if it doesn't exist, generate it
@@ -298,6 +318,7 @@ namespace vae {
                 }
 
                 void draw(TestVisualize &testVisualize){
+                    RLOCK
                     for(auto i = chunks.begin(); i != chunks.end(); ++i){
                         Chunklet *cx = (*i).get();
                         testVisualize.drawRect(cx->x_min, cx->y_min, chunkSize, chunkSize);
@@ -326,7 +347,7 @@ namespace vae {
 
                 //Gen/load this chunkMap
                 Map::Ptr _loadMap(Id id){
-                    return Map::Ptr(new Map(id, 8));
+                    return Map::Ptr(new Map(*this, id, 8));
                 }
 /**
  * Loads the desired chunkMap
@@ -347,24 +368,24 @@ namespace vae {
                     return result.str();
                 }
                 bool readyMap(MapId id){
+                    LOG(Info) << "Ready map [" << id << "]";
                     if(maps[id] == NULL) {
                         Result r = loadMap(id);
                         if(r == ""){
                             return false;
                         }
-                        std::cout << r << std::endl;
                     }
                     else    //Map is already loaded
                         return false;
                     return true;
                 }
-                Composer(){}
-
+                boost::asio::io_context &ioContext;
             public:
+                boost::asio::io_context &getIoContext() { return ioContext; }
                 ~Composer(){
                     LOG(Info) << "Close MapComposer.";
                 }
-                Composer(std::string connectionString): connectionString(connectionString){
+                Composer(boost::asio::io_context &ioContext, std::string connectionString): ioContext(ioContext), connectionString(connectionString){
                 }
 
                 bool insert(Node &node){

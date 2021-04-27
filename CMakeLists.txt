@@ -10,7 +10,16 @@ find_package(Boost COMPONENTS serialization thread REQUIRED)
 link_directories(${Boost_LIBRARY_DIR})
 
 if(Boost_FOUND)
-    include_directories(${Boost_INCLUDE_DIR} /usr/include/lua5.3 /usr/include/luabind /usr/include)
+    include_directories(${Boost_INCLUDE_DIR} /usr/include)
+
+
+    #lua
+    find_package(Lua REQUIRED)
+    include_directories(/usr/include/lua5.2)
+    link_libraries(lua5.2)
+    #sol2: Requires some version of LUA 5.1+
+    include_directories(${PROJECT_SOURCE_DIR}/olib/sol2/include)
+    add_subdirectory("${PROJECT_SOURCE_DIR}/olib/sol2" "${PROJECT_SOURCE_DIR}/olib/sol2/sol2_output")
 
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpqxx -lpq")
     set(PQXX /usr/include/pqxx)
@@ -22,7 +31,7 @@ if(Boost_FOUND)
 
     file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
 
-    add_executable(VaeTesting main.cpp BoostSerializationTest.cpp BoostSerializationTest.h PostgreSQLTest.cpp PostgreSQLTest.h LuaBindTest.cpp LuaBindTest.h vae/vsm/SkipMap.cpp vae/vsm/SkipMap.h vae/vsm/TestVisualize.cpp vae/vsm/TestVisualize.h vae/vsm/ChunkMap.cpp vae/vsm/ChunkMap.h vae/vsm/BasicMap.cpp vae/vsm/BasicMap.h vae/react/Action.cpp vae/react/Action.h vae/react/Observer.cpp vae/react/Observer.h vae/react/EntityActions.cpp vae/react/EntityActions.h vae/vsm/Map.cpp vae/vsm/Map.h vae/ThreadManager.cpp vae/ThreadManager.h log/logger_service.cpp log/logger_service.hpp vae/log.cpp vae/log.h vae/Datastore.cpp vae/Datastore.h vae/LogService.cpp vae/LogService.h vae/TestService.cpp vae/TestService.h)
+    add_executable(VaeTesting main.cpp BoostSerializationTest.cpp BoostSerializationTest.h PostgreSQLTest.cpp PostgreSQLTest.h LuaState.cpp LuaState.h vae/vsm/SkipMap.cpp vae/vsm/SkipMap.h vae/vsm/TestVisualize.cpp vae/vsm/TestVisualize.h vae/vsm/ChunkMap.cpp vae/vsm/ChunkMap.h vae/vsm/BasicMap.cpp vae/vsm/BasicMap.h vae/react/Action.cpp vae/react/Action.h vae/react/Observer.cpp vae/react/Observer.h vae/react/EntityActions.cpp vae/react/EntityActions.h vae/vsm/Map.cpp vae/vsm/Map.h vae/ThreadManager.cpp vae/ThreadManager.h log/logger_service.cpp log/logger_service.hpp vae/log.cpp vae/log.h vae/Datastore.cpp vae/Datastore.h vae/LogService.cpp vae/LogService.h vae/TestService.cpp vae/TestService.h olib/influxdb.hpp vae/LogStore.cpp vae/LogStore.h)
 
     target_link_libraries(VaeTesting ${Boost_LIBRARIES} ${PQXX_LIB} ${PQ_LIB})
 # required for threads

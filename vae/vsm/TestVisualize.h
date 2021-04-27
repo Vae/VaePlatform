@@ -5,11 +5,11 @@
 #ifndef BOOSTTESTING_TESTVISUALIZE_H
 #define BOOSTTESTING_TESTVISUALIZE_H
 
-#include<iostream>
 #include<SFML/Graphics.hpp>
 #include <boost/noncopyable.hpp>
 
 #include "../../defs.h"
+#include "../log.h"
 
 namespace vae {
 
@@ -22,7 +22,7 @@ namespace vae {
             sf::Font font;
         public:
             ~TestVisualize(){
-                std::cout << "Kill Window" << std::endl;
+                LOG(Info) << "Kill Window";
             }
             sf::RenderWindow& getWindow() { return window; }
             TestVisualize(std::string title) : window(sf::VideoMode(800, 600), title), title(title) {

@@ -4,16 +4,27 @@
 
 #include "Map.h"
 
-
+vae::vsm::chunk::Chunklet::Chunklet(Map &parent, int chunkSize, int x, int y):
+        strand(parent.getComposer().getIoContext()),
+        chunk_x(x),
+        chunk_y(y),
+        x_min(x * chunkSize),
+        y_min(y * chunkSize),
+        x_max(x * chunkSize + (chunkSize - 1)),
+        y_max(y * chunkSize + (chunkSize - 1)){
+    tiles = new Tile*[chunkSize];
+    for(int a = 0; a < chunkSize; a++)
+        tiles[a] = new Tile[chunkSize];
+}
 bool vae::vsm::chunk::Chunklet::insert(Node *node){
     //TODO: Ensure we're inserting into a valid location and valid for the node type.
     //To do this, we'll need to have a bunch of high-level logic in place.
 
     if(node->getChunklet() != NULL)
         node->getChunklet()->remove(node);
-
+    WLOCK
     nodes.push_back(node);
-    //std::cout << "Inserted node." << std::endl;
+    LOG(Debug) << "Inserted node.";
     //TODO: Inform all viewports of the new node (if applicable)
 
     return false;
@@ -119,7 +130,7 @@ bool vae::vsm::chunk::Node::setX(coordType to){
     Chunklet::Ptr targetChunk = getMap()->getChunklet( getMap()->translateToChunk(to), getChunklet()->chunk_y);
     if( targetChunk.get() != getChunklet().get() ){
         if(targetChunk->insert(this)) {
-            std::cout << "Insert failure." << std::endl;
+            LOG(Warn) << "Insert failure.";
             return true;
         }
         else
@@ -132,7 +143,7 @@ bool vae::vsm::chunk::Node::setY(coordType to){
     Chunklet::Ptr targetChunk = getMap()->getChunklet(getChunklet()->chunk_x, getMap()->translateToChunk(to));
     if( targetChunk.get() != getChunklet().get() ){
         if(targetChunk->insert(this)) {
-            std::cout << "Insert failure." << std::endl;
+            LOG(Warn) << "Insert failure.";
             return true;
         }
         else

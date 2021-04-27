@@ -15,14 +15,19 @@ class Datastore {
     //Datastore(std::string connectionString){}
     bool connect(std::string connectString) {
         assert(conn.get() == 0);
-        conn.reset(new pqxx::connection(connectString));
-        if (conn->is_open()) {
-            LOG(Info) << "Opened database successfully: " << conn->dbname();
-        } else {
-            LOG(Error) << "Can't open database";
-            return true;
+        try{
+            conn.reset(new pqxx::connection(connectString));
+            if (conn->is_open()) {
+                LOG(Info) << "Opened database successfully: " << conn->dbname();
+            } else {
+                LOG(Error) << "Can't open database";
+                return true;
+            }
+            return false;
+        } catch (const std::exception &e) {
+            LOG(Error) << e.what();
+            return 1;
         }
-        return false;
     }
 };
 

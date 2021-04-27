@@ -5,7 +5,7 @@
 #ifndef BOOSTTESTING_POSTGRESQLTEST_H
 #define BOOSTTESTING_POSTGRESQLTEST_H
 
-#include <iostream>
+#include "vae/log.h"
 #include <pqxx/pqxx>
 
 class PostgreSQLTest {
@@ -16,14 +16,14 @@ public:
         try {
             connection C("dbname = test1 user = root password = pass hostaddr = 192.168.99.10 port = 25432");
             if (C.is_open()) {
-                cout << "Opened database successfully: " << C.dbname() << endl;
+                LOG(Info) << "Opened database successfully: " << C.dbname();
             } else {
-                cout << "Can't open database" << endl;
+                LOG(Error) << "Can't open database";
                 return 1;
             }
-            C.disconnect ();
+            C.disconnect();
         } catch (const std::exception &e) {
-            cerr << e.what() << std::endl;
+            LOG(Error) << e.what();
             return 1;
         }
         return 0;

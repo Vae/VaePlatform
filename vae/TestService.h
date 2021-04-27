@@ -5,14 +5,14 @@
 #ifndef BOOSTTESTING_TESTSERVICE_H
 #define BOOSTTESTING_TESTSERVICE_H
 
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 
 #include "vsm/Map.h"
 
 class TestService {
     boost::asio::io_service &ios;
     boost::asio::deadline_timer timer;
-    int fps = 10;
+    int fps = 20;
 
     vae::vsm::TestVisualize testVisualize;
     vae::vsm::chunk::Composer composer;
@@ -33,7 +33,7 @@ public:
             ios(ios),
             timer(ios),
             testVisualize("Vaewyn Server Mapping Visualizer"),
-            composer("???"),
+            composer(ios, "???"),
             mapId("chunkMap-zero"),
             viewport(2, 3,5, 5)
             {
@@ -44,7 +44,7 @@ public:
                 composer.insert(viewport, mapId);
 
                 auto beep = [&](sf::Keyboard::Key key){
-                    std::cout << key << "\t\t\t";
+                    LOG(Info) << "Keypress: " << key;
                     switch(key){
                         case sf::Keyboard::Key::Down: viewport.setY(viewport.getY() + 3); break;
                         case sf::Keyboard::Key::Up: viewport.setY(viewport.getY() - 4); break;

@@ -9,8 +9,6 @@
 #include <iomanip>
 #include <boost/noncopyable.hpp>
 #include "boost/date_time/posix_time/posix_time.hpp"
-#include <iostream>
-#include <sstream>
 #include "../olib/concurrentqueue.h"
 #include "LogService.h"
 
@@ -24,7 +22,7 @@
 //    d.finalize();
 
 
-#define LOG(level) vl::level(logInstance).start(__FILE__, __LINE__)
+#define LOG(level) vl::level(logInstance).start(__FILE__, __LINE__, __FUNCTION__)
 #define LOG_START(level) vl::level(&vl::logInstance)
 #define LOGA(instance) instance.append()
 
@@ -52,6 +50,10 @@ namespace vl {
     class LogLevel: private boost::noncopyable{
     private:
         bool sent;
+        char *file = nullptr, *functionName = nullptr;
+        int line = 0;
+        long time;
+
     protected:
         bool codeDetails;
     public:
@@ -60,13 +62,14 @@ namespace vl {
         std::ostringstream os;
         LogEngine &logEngine;
 
-        LogLevel(LogEngine &logEngine, level_t level, const char *name): level(level), name(name), logEngine(logEngine), sent(false){}
+        LogLevel(LogEngine &logEngine, level_t level, const char *name): level(level), name(name), logEngine(logEngine), sent(false), time((boost::posix_time::microsec_clock::universal_time() - boost::posix_time::ptime(boost::gregorian::date(1970, 1, 1))).total_nanoseconds()){}
         //std::string getName() const { return name; }
         level_t getLevel() const { return level; }
-        std::ostringstream &start(const char *filename, const int line);
+        std::ostringstream &start(const char *filename, const int line, const char *function);
         std::ostringstream &start();
         std::ostringstream &append(){
             assert(sent == false);
+
             return os;
         }
         void finalize();
@@ -113,10 +116,9 @@ namespace vl {
     class LogEngine : private boost::noncopyable{
     public:
         const char *systemName;
-        LogEngine(const char * systemName);
-        LogEngine(const char * systemName, std::function<void(const std::string&)> f);
+        LogEngine(const char *systemName, std::function<void(const char* system, long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string &message)> f);
+        LogEngine(const char *systemName);
         virtual ~LogEngine();
-        std::ostringstream &get(LogLevel);
         void reportingLevelTo(LogLevel &l){
             reportingLevel = l.getLevel();
             ignoreReportinLevel = false;
@@ -124,13 +126,13 @@ namespace vl {
         void reportingLevelReset(){
             ignoreReportinLevel = true;
         }
-        void setLoggingFunction(std::function<void(const std::string&)> f){
+        void setLoggingFunction(std::function<void(const char* system, long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string &message)> f){
             useInserter = true;
             inserter = f;
         }
         //std::ostringstream &get(Level);
         //Log &Set(const char *file, int line);
-        void insert(const std::string &dis);
+        void insert(long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string &dis);
     public:
         Level &ReportingLevel();
     protected:
@@ -138,11 +140,8 @@ namespace vl {
         const char *file;
         int line;
     private:
-        std::function<void(const std::string&)> inserter;
+        std::function<void(const char* system, long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string &message)> inserter;
         bool useInserter = false;
-        void defaultInsert(const std::string &dis){
-            std::cout << dis << std::endl;
-        }
         moodycamel::ConcurrentQueue<std::string> log_queue;
         bool ignoreReportinLevel = true;
         level_t reportingLevel = 0;

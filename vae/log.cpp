@@ -26,17 +26,16 @@ vl::LogLevel::~LogLevel(){
 void vl::LogLevel::finalize(){
     assert(sent == false);
     sent = true;
-    logEngine.insert(os.str());
+    logEngine.insert(time, name, level, file, line, functionName, os.str());
 }
-std::ostringstream &vl::LogLevel::start(const char *file, const int line){
+std::ostringstream &vl::LogLevel::start(const char *file, const int line, const char *function){
     assert(sent == false);
-    os << NowTime();
-    if(codeDetails)
-        os << " [" << logEngine.systemName << "] " << name << " " << file << ":" << line << "-> ";
-    else
-        os << " [" << logEngine.systemName << "] " << name << ": ";
+    this->file = (char *)file;
+    this->line = line;
+    this->functionName = (char *)function;
     return os;
 }
+
 std::ostringstream &vl::LogLevel::start(){
     assert(sent == false);
     os << NowTime();
@@ -44,23 +43,18 @@ std::ostringstream &vl::LogLevel::start(){
     return os;
 }
 
-vl::LogEngine::LogEngine(const char *systemName) : file(0), line(0), systemName(systemName){
-}
-vl::LogEngine::LogEngine(const char * systemName, std::function<void(const std::string&)> f): file(0), line(0), systemName(systemName), inserter(f){
-}
 
-void vl::LogEngine::insert(const std::string &dis){
+vl::LogEngine::LogEngine(const char *systemName, std::function<void(const char* system, long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string &message)> f): file(0), line(0), systemName(systemName), inserter(f){
+    useInserter = true;
+}
+vl::LogEngine::LogEngine(const char *systemName): file(0), line(0), systemName(systemName){
+    useInserter = false;
+}
+void vl::LogEngine::insert(long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string &dis){
     if(useInserter)
-        inserter(dis);
+        inserter(this->systemName, time, level, lv, file, line, function, dis);
     else
-        defaultInsert(dis);
-}
-
-std::ostringstream& vl::LogEngine::get(LogLevel level){
-    os << NowTime();
-    os << " " << level.name << ": ";
-//    os << std::string(level > logDEBUG ? level - logDEBUG : 0, '\t');
-    return os;
+        std::cout << dis << std::endl;
 }
 
 vl::LogEngine::~LogEngine()

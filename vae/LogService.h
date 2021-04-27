@@ -8,34 +8,43 @@
 
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
-#include <boost/bind.hpp>
+#include <boost/bind/bind.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <iostream>
 
 
-template<typename impl_type>
+namespace lv{
+    static const boost::posix_time::ptime time_epoch(boost::gregorian::date(1970, 1, 1));
+}
+
 class LogService {
     boost::asio::io_service &ios;
 public:
     //typedef vl::LogEngine impl_type;
+    typedef std::function<void(const char* system, long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string &message)> sinkFunctionType;
 
     LogService(boost::asio::io_service &ios):
             ios(ios),
             work_io_service_(),
             work_(new boost::asio::io_service::work(work_io_service_)),
-    work_thread_(new boost::thread(boost::bind(&boost::asio::io_service::run, &work_io_service_))){
+            work_thread_(new boost::thread(boost::bind(&boost::asio::io_service::run, &work_io_service_))),
+            useSinks(false){
     }
 
-    void use_file(impl_type& /*impl*/, const std::string& file){
-        // Pass the work of opening the file to the background thread.
-        work_io_service_.post(boost::bind(&LogService::use_file_impl, this, file));
+    void setWriterFunction(sinkFunctionType to){
+        sink = to;
+        useSinks = true;
     }
 
     /// Log a message.
+    /*
     void log(const std::string& message){
         // Pass the work of opening the file to the background thread.
         work_io_service_.post(boost::bind(&LogService::log_impl, this, message));
+    }
+    */
+    void log(const char* system, long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string message){
+        work_io_service_.post(boost::bind(&LogService::log_impl, this, system, time, level, lv, file, line, function, message));
     }
 private:
     /// Private io_service used for performing logging operations.
@@ -49,6 +58,11 @@ private:
     /// Thread used for running the work io_service's run loop.
     boost::scoped_ptr<boost::thread> work_thread_;
 
+    ///WORKER THREAD
+    /// Where logs go to be written: this will be accessed by the worker thread!
+    sinkFunctionType sink;
+    bool useSinks;
+
     /// Helper function used to open the output file from within the private
     /// io_service's thread.
     void use_file_impl(const std::string& file)
@@ -60,13 +74,8 @@ private:
 
     /// Helper function used to log a message from within the private io_service's
     /// thread.
-    void log_impl(const std::string& text)
-    {
-        //  if(ofstream_.is_open())
-        //	  ofstream_ << text << std::endl;
-        //  else
-        std::cout << text << std::endl;
-    }
+    //void log_impl(const std::string& text);
+    void log_impl(const char* system, long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string &message);
 };
 
 #endif //BOOSTTESTING_LOGSERVICE_H
