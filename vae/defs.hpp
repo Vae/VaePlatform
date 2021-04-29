@@ -2,10 +2,53 @@
 // Created by protocol on 3/2/21.
 //
 
-#ifndef BOOSTTESTING_DEFS_H
-#define BOOSTTESTING_DEFS_H
+#ifndef BOOSTTESTING_DEFS_HPP
+#define BOOSTTESTING_DEFS_HPP
+
+#include <boost/noncopyable.hpp>
+
+/**
+ *
+ * This should be renamed to util
+ *
+ */
+
+namespace vae{
+    typedef double TimeType;
+    typedef double VectorDirectionType;
+    typedef double SpeedType;
+
+
+#define PI 3.1415926535
+
+    double randomDouble(double fMin, double fMax);
+
+
+    class ServerInstance : public boost::noncopyable{
+    private:
+        bool running;
+    public:
+        ServerInstance(): running(true) {}
+        void stop() { running = false; }
+        bool isRunning() const { return running; }
+    };
+    //instanced in main.cpp
+    extern ServerInstance serverInstance;
+
+
+    //This is an idea for wrapping a single resource with an associated mutex
+    template<typename T, typename MUTEX_TYPE>
+    class SharedResource: public T{
+    public:
+        //T t;
+        //T &operator()(){return t;}
+        MUTEX_TYPE mutex;
+    };
+}   //namespace vae
 
 typedef signed long EntityID;
+
+
 
 #define DEB(x) << #x << ": " << x << "  "
 
@@ -52,4 +95,4 @@ namespace make {
 }
 */
 
-#endif //BOOSTTESTING_DEFS_H
+#endif //BOOSTTESTING_DEFS_HPP

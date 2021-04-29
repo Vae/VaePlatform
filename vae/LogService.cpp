@@ -14,24 +14,29 @@ void LogService<impl_type, storage_type>::log_impl(const std::string& text){
     //  else
     std::cout << text << std::endl;
 }*/
-
-void LogService::log_impl(const char* system, long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string &message){
-
+void LogService::cout_impl(const char* system, long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string message){
     boost::format f2("%02u");
-
     boost::posix_time::ptime eventTime = boost::posix_time::ptime(boost::gregorian::date(1970, 1, 1)) + boost::posix_time::milliseconds(time / 1000000);
-
     std::cout
+            //<< boost::posix_time::to_iso_string(eventTime)
+            << eventTime.date().year() << "-" << f2 % eventTime.date().month().as_number() << "-"
+            << f2 % eventTime.date().day().as_number() << " "
+            << f2 % eventTime.time_of_day().hours() << ":" << f2 % eventTime.time_of_day().minutes() << ":"
+            << f2 % eventTime.time_of_day().seconds()
+            << " [" << system << "] " << level << " " << file << ":" << line << "-" << function << "-> "
+            << message << std::endl;
+}
+void LogService::log_impl(const char* system, long time, const char* level, const float lv, const char* file, const int line, const char* function, const std::string &message){
+    {
+        boost::mutex::scoped_lock lock(logEntryHx.mutex);
+        logEntryHx[level][system][file][line]++;
+        std::shared_ptr<std::vector<int>> p(new std::vector<int>);
 
-        //<< boost::posix_time::to_iso_string(eventTime)
-        << eventTime.date().year() << "-" << f2 % eventTime.date().month().as_number() << "-" << f2 % eventTime.date().day().as_number() << " "
-        << f2 % eventTime.time_of_day().hours() << ":" << f2 % eventTime.time_of_day().minutes() << ":" << f2 % eventTime.time_of_day().seconds()
-        << " [" << system << "] " << level << " " << file << ":" << line << "-" << function << "-> " << message << std::endl;
-
+        if(logEntryHx[level][system][file][line] < 25)
+            coutStrand.post(boost::bind(&LogService::cout_impl, this, system, time, level, lv, file, line, function, message));
+    }
     if(useSinks)
         sink(system, time, level, lv, file, line, function, message);
-
-
 /*
  // Examples because my brain don't work
     auto epoch = std::chrono::high_resolution_clock::now().time_since_epoch().count();

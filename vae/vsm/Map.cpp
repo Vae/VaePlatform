@@ -5,7 +5,8 @@
 #include "Map.h"
 
 vae::vsm::chunk::Chunklet::Chunklet(Map &parent, int chunkSize, int x, int y):
-        strand(parent.getComposer().getIoContext()),
+        //strand(parent.getComposer().getIoContext()),
+        parent(parent),
         chunk_x(x),
         chunk_y(y),
         x_min(x * chunkSize),
@@ -16,15 +17,22 @@ vae::vsm::chunk::Chunklet::Chunklet(Map &parent, int chunkSize, int x, int y):
     for(int a = 0; a < chunkSize; a++)
         tiles[a] = new Tile[chunkSize];
 }
-bool vae::vsm::chunk::Chunklet::insert(Node *node){
+vae::vsm::chunk::Chunklet::~Chunklet(){
+    for(int a = 0; a < parent.chunkSize; ++a)
+        delete tiles[a];
+    delete tiles;
+    LOG(Debug) << "Close Chunklet " << x_min << " " << y_min << ".";
+}
+
+bool vae::vsm::chunk::Chunklet::insert(Node* node){
     //TODO: Ensure we're inserting into a valid location and valid for the node type.
     //To do this, we'll need to have a bunch of high-level logic in place.
-
+    //RLOCK????
     if(node->getChunklet() != NULL)
         node->getChunklet()->remove(node);
     WLOCK
     nodes.push_back(node);
-    LOG(Debug) << "Inserted node.";
+    //LOG(Debug) << "Inserted node.";
     //TODO: Inform all viewports of the new node (if applicable)
 
     return false;
@@ -136,7 +144,7 @@ bool vae::vsm::chunk::Node::setX(coordType to){
         else
             this->chunk = targetChunk;
     }
-    x.setPos(to);
+    pos.x = to;
     return false;
 }
 bool vae::vsm::chunk::Node::setY(coordType to){
@@ -149,10 +157,38 @@ bool vae::vsm::chunk::Node::setY(coordType to){
         else
             this->chunk = targetChunk;
     }
-    y.setPos(to);
+    pos.y = to;
+    return false;
+}
+bool vae::vsm::chunk::Node::setPos(coordType x, coordType y){
+    Chunklet::Ptr targetChunk = getMap()->getChunklet(getMap()->translateToChunk(x), getMap()->translateToChunk(y));
+    if(targetChunk.get() != getChunklet().get()){
+        if (targetChunk->insert(this)) {
+            LOG(Warn) << "Insert failure.";
+            return true;
+        }
+        this->chunk = targetChunk;
+    }
+    pos.x = x;
+    pos.y = y;
     return false;
 }
 
+//dist = speed * delta_t
+double vae::vsm::chunk::Node::movePos(VectorDirectionType vd, SpeedType dist){
+    SpeedType maxSpeed = vae::vsm::chunk::Map::maxSpeed;
+    while(dist > 0){
+        SpeedType move = (dist > maxSpeed) ? maxSpeed : dist;
+        vae::vsm::chunk::coordType newX = pos.x + (cos(vd) * dist);
+        vae::vsm::chunk::coordType newY = pos.y + (sin(vd) * dist);
+        if(setPos(newX, newY)){
+            //couldn't move, return the remaining dist we didn't move
+            return dist;
+        }
+        dist -= move;
+    }
+    return false;
+}
 bool vae::vsm::chunk::NodeList::setPos(coordType to)
 {
 /*    Chunklet::Ptr targetChunk;

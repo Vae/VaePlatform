@@ -30,11 +30,23 @@ namespace vae {
             typedef std::shared_mutex Lock;
             typedef std::unique_lock< Lock > WriteLock;
             typedef std::shared_lock< Lock > ReadLock;
+
 #define RLOCK ReadLock r_lock(lock);
 #define WLOCK WriteLock w_lock(lock);
 
+            typedef double coordType;
+            typedef double VectorDirection;
+            struct Vector {
+                coordType x, y;
+                Vector(coordType x, coordType y): x(x), y(y){}
+                static float getLength(const Vector & dis){
+                    return dis.x * dis.x + dis.y * dis.y;
+                }
+                static float getAngle(const Vector & dis){
+                    return dis.y > 0.0f ? acos(dis.x / getLength(dis)) : -acos(dis.x / getLength(dis));
+                }
+            };
 
-            typedef int coordType;
             typedef std::string MapId;
 
             class Tile: private boost::noncopyable{
@@ -72,6 +84,9 @@ namespace vae {
                 }
                 Viewport(int x, int y, int width, int height): width(width), height(height), x(x), y(y), chunkGrid(width, std::vector<std::shared_ptr<Chunklet>>(height)) {
                 }
+                virtual ~Viewport(){
+                    LOG(Info) << "Close Viewport.";
+                }
 
                 void cycle(float timestamp){
                 //        while(action_queue.size_approx() > 0){
@@ -101,7 +116,11 @@ namespace vae {
             class Chunklet: private boost::noncopyable{
                 Tile **tiles;
                 Lock lock;
-                boost::asio::io_context::strand strand;
+                Map &parent;
+
+                //Strand will be used to push viewport events onto
+                //  Which will then pass that info to interfaces: interfaces to not directly interact with what vp sees
+                //boost::asio::io_context::strand strand;
 
                 /**
                  * Since I want to try and have each Chunklet be on its own thread, they'll have to maintain their own lists.
@@ -120,9 +139,7 @@ namespace vae {
                 const int y_max;
 
                 Chunklet(Map &parent, int chunkSize, int x, int y);
-                ~Chunklet(){
-                    LOG(Debug) << "Chunklet lost " << x_min << " " << y_min;
-                }
+                virtual ~Chunklet();
 
                 //void ReadFunction(){
                 //    ReadLock r_lock(lock);
@@ -161,15 +178,18 @@ namespace vae {
 //Producer
             class Node: private boost::noncopyable {
                 friend class Composer;
-                NodeList x, y;
+                friend class Map;
+                Vector pos;
                 Chunklet::Ptr chunk;
                 std::shared_ptr<Map> map;
                 MapId mapId;
             public:
                 typedef std::shared_ptr<Node> Ptr;
-                Node(): x(*this), y(*this){
+                Node(): pos(0, 0){
+                    LOG(Debug) << "New Node <" << this << ">.";
                 }
                 ~Node(){
+                    LOG(Debug) << "Lost Node <" << this << ">.";
                     //Unregister chunkMap
                 }
                 /*vae::react::Action<Node>::Ptr say(std::string dis){
@@ -177,13 +197,27 @@ namespace vae {
                     };
                     return new vae::react::Action<Node>(this, act);
                 }*/
+                /*
+                //https://embeddedartistry.com/blog/2017/01/11/stdshared_ptr-and-shared_from_this/
+                template<typename ... T>
+                static std::shared_ptr<Node> create(T&& ... t) {
+                    //return std::shared_ptr<Node>(new Node(std::forward<T>(t)...));
+                    return std::make_shared<vae::vsm::chunk::Node>(std::forward<T>(t)...);
+                }
+                */
+
+
                 void setMap(std::shared_ptr<Map> to){ this->map = to; }
 
                 bool setX(coordType to);
                 bool setY(coordType to);
+                bool setPos(coordType x, coordType y);
 
-                NodeList& getXNode() { return x; }
-                NodeList& getYNode() { return y; }
+                //dist = speed * delta_t
+                double movePos(VectorDirectionType vd, SpeedType dist);
+
+                coordType getX() { return pos.x; }
+                coordType getY() { return pos.y; }
                 Chunklet::Ptr getChunklet() const { return chunk; }
                 std::shared_ptr<Map> getMap() const { return map; }
                 MapId getMapId() const { return mapId; }
@@ -215,7 +249,6 @@ namespace vae {
                 //boost::numeric::ublas::mapped_matrix<int> nodeMap;
                 std::list<std::reference_wrapper<Viewport>> viewports;
                 /**
-                 *
                  * @param x
                  * @param y
                  * @return pointer to the loaded chunk
@@ -242,11 +275,11 @@ namespace vae {
                  * @returns bool
                  *  If the node insertion failed, true will return, else false for success.
                  */
-                bool insert(Node &node){
+                bool insert(Node &node, coordType x, coordType y){
                     //TODO: Ensure the node is in bounds defined by the Map shape
                     //Ensure the chunk is loaded; if not, load it.
-                    int chunk_x = translateToChunk(node.getXNode().getPos());
-                    int chunk_y = translateToChunk(node.getYNode().getPos());
+                    int chunk_x = translateToChunk(x);
+                    int chunk_y = translateToChunk(y);
 
                     Chunklet::Ptr dest = getChunklet(chunk_x, chunk_y);
 
@@ -254,24 +287,30 @@ namespace vae {
                         LOG(Warn) << "Failed to insert node.";
                         return true;
                     }
+                    node.pos.x = x;
+                    node.pos.y = y;
                     node.setChunklet(dest);
                     nodes.push_back(node);
                     return false;
                 }
-
                 //Will get a rectangle lock
                 void grabChunkLock(int x, int y){
-
                 }
                 Map(Composer &composer, MapId myId, int chunkSize): composer(composer), id(myId), chunkSize(chunkSize), chunkBitShift(chunkSize>>1)/*, nodeMap(1048575, 1048575)*/{
-                    LOG(Info) << "Map loaded " << id << "<" << this << ">";
+                    LOG(Info) << "Map loaded " << id << "<" << this << ">.";
                 }
             public:
                 typedef std::shared_ptr<Map> Ptr;
                 typedef std::string Id;
                 const int chunkSize;
                 const int chunkBitShift;
+                constexpr const static SpeedType maxSpeed = 1;
+
                 const MapId id;
+
+                virtual ~Map(){
+                    LOG(Info) << "Close Map.";
+                }
 
                 Composer& getComposer() { return composer; }
 
@@ -319,13 +358,13 @@ namespace vae {
 
                 void draw(TestVisualize &testVisualize){
                     RLOCK
-                    for(auto i = chunks.begin(); i != chunks.end(); ++i){
-                        Chunklet *cx = (*i).get();
-                        testVisualize.drawRect(cx->x_min, cx->y_min, chunkSize, chunkSize);
-                        cx->draw(testVisualize);
-                    }
+                    //for(auto i = chunks.begin(); i != chunks.end(); ++i){
+                    //    Chunklet *cx = (*i).get();
+                    //    testVisualize.drawRect(cx->x_min, cx->y_min, chunkSize, chunkSize, sf::Color(255, 255, 255, 30));
+                    //    cx->draw(testVisualize);
+                    //}
                     for(auto i = nodes.begin(); i != nodes.end(); ++i)
-                        testVisualize.drawPoint(i->get().getXNode().getPos(), i->get().getYNode().getPos(), sf::Color::Magenta);
+                        testVisualize.drawPoint(i->get().getX(), i->get().getY(), sf::Color::Magenta);
                     for(auto i = viewports.begin(); i != viewports.end(); ++i) {
                         i->get().draw(testVisualize);
                         //testVisualize.drawRect(i->get().getX(), i->get().getY(), i->get().getWidth() * chunkSize, i->get().getHeight() * chunkSize,
@@ -363,7 +402,7 @@ namespace vae {
                         LOG(Warn) << result.str();
                     }
                     else
-                        maps[id]->pregenChunks(0,0 , 4);
+                        maps[id]->pregenChunks(0,0 , 1);
 
                     return result.str();
                 }
@@ -388,12 +427,15 @@ namespace vae {
                 Composer(boost::asio::io_context &ioContext, std::string connectionString): ioContext(ioContext), connectionString(connectionString){
                 }
 
-                bool insert(Node &node){
+                bool insert(Node& node, coordType x, coordType y){
+                    //inserting onto a valid map?
                     if(node.getMapId()  == "")
                         return true;
+                    //inserting onto a load-able map?
                     if(readyMap(node.getMapId()))
                         return true;
-                    if(maps[node.getMapId()]->insert(node)){
+                    //
+                    if(maps[node.getMapId()]->insert(node, x, y)){
                         //Map didn't want the node
                         return true;
                     }
