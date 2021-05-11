@@ -21,6 +21,9 @@
 #include "vae/TestService.h"
 #include "vae/LogStore.h"
 #include "vae/vsm/TestVisualize.h"
+#include "vae/Entity.h"
+#include "vae/Service.h"
+
 /**
  * Basic mapping
  *  Node OK
@@ -56,13 +59,18 @@ using sys_nanoseconds = sys_time<std::chrono::nanoseconds>;
 #include<iostream>
 using namespace std;
 
-void startDB(){
+void startDB(vae::Datastore::Ptr p){
 }
 
 int main() {
     //Fall-off-the-bone Steak: (2/3)21 3 or 2 hours exposed to smoke, 2 hours in foil, 1 hour. 250f
+    /**
+     *
+     * Low level setup.
+     *
+     */
 
-    boost::asio::io_service ioService;
+    boost::asio::io_service ios;
 
     //window will be deleted by TestService
     sf::RenderWindow *window = new sf::RenderWindow(sf::VideoMode(800, 600), "Vaewyn Server Mapping Visualizer");
@@ -97,7 +105,24 @@ int main() {
         if(r != 0)
             cout << "InfluxDB write error: " << r << endl;
     });
-    LOG(Debug) << "Start.";
+
+    vae::Datastore::Ptr datastore(new vae::Datastore);
+    if(datastore->connect("dbname = vae user = root password = pass hostaddr = 192.168.99.10 port = 25432")){
+        LOG(Error) << "Failed to connect to SQL database.";
+        return 1;
+    }
+
+    LOG(Info) << "Low level start up complete.";
+
+    /**
+     *
+     *  Mid level startup
+     *
+     */
+    vae::EntityComposer entityComposer(ios, datastore);
+    entityComposer.start();
+
+    LOG(Info) << "Mid level start up complete.";
 
     //LuaState luaState;
     ////    void log(int level, const char* file, int line, const char* function, std::string message){
@@ -110,30 +135,30 @@ int main() {
     //luaState.getLua().do_string("t = LuaState:new() t:test()"
     //                            "t:log(1, \"abc\", 2, \"xyz\", \"qwe\")");
 
-    //Datastore ds;
-    //ds.connect("dbname = test1 user = root password = pass hostaddr = 192.168.99.10 port = 25432");
+    vae::ServiceRegistry serviceRegistry;
+    vae::Service::Ptr p(new TestService(ios, window));
+    serviceRegistry.registryService(p);
 
-    TestService *testService = new TestService(ioService, window);
     //vae::vsm::TestVisualize testVisualize("test");
 
     //std::cout << "BoostSerializationTest: " << BoostSerializationTest::boostSerializationTest() << std::endl;
     //std::cout << "PostgreSQLTest: " << PostgreSQLTest::postgreSQLTest() << std::endl;
 
     std::vector<std::thread> threads;
-    auto count = std::thread::hardware_concurrency() * 2;
-    //count = 1;
-    cout << "Thread count: " << count << endl;
-    LOG(Info) << "Thread count: " << count;
+    auto threadCount = std::thread::hardware_concurrency() * 2;
+    //threadCount = 2;
+    cout << "Thread count: " << threadCount << endl;
+    LOG(Info) << "Thread count: " << threadCount;
 
     try{
         //How to do this without making run() last forever?
         //boost::asio::signal_set signals(ioService, SIGINT, SIGTERM);
         //signals.async_wait([&](auto, auto){ cout << "Kill/term" << endl; vae::serverInstance.stop(); });
 
-        for(int n = 0; n < count; ++n){
+        for(int n = 0; n < threadCount; ++n){
             threads.emplace_back([&]
                                  {
-                                     ioService.run();
+                                     ios.run();
                                  });
         }
         for(auto& thread : threads){
@@ -146,7 +171,7 @@ int main() {
         std::printf("Exception: %s\n", e.what());
     }
     LOG(Debug) << "delete TestService.";
-    delete testService;
+    //delete testService;
     //LOG(Debug) << "delete sf::RenderWindow.";
     //delete window;
     cout << "Waiting on global logging service to finish..." << endl;

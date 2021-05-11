@@ -45,8 +45,8 @@ public:
             useSinks(false),
             coutStrand(work_io_service_)
             {
-        for(int a = 0; a < 8; ++a)
-            threadGroup.add_thread(new boost::thread(boost::bind(&boost::asio::io_service::run, &work_io_service_)));
+        for(int a = 0; a < 1; ++a)
+            threadGroup.add_thread(new boost::thread(boost::bind(&boost::asio::io_service::run, &work_io_service_), std::string("LogService_"+a)));
     }
     ~LogService(){
         work_.reset();

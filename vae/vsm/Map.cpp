@@ -5,7 +5,7 @@
 #include "Map.h"
 
 vae::vsm::chunk::Chunklet::Chunklet(Map &parent, int chunkSize, int x, int y):
-        //strand(parent.getComposer().getIoContext()),
+        strand(parent.getComposer().getIoContext()),
         parent(parent),
         chunk_x(x),
         chunk_y(y),
@@ -23,13 +23,23 @@ vae::vsm::chunk::Chunklet::~Chunklet(){
     delete tiles;
     LOG(Debug) << "Close Chunklet " << x_min << " " << y_min << ".";
 }
-
+void vae::vsm::chunk::Chunklet::draw(TestVisualize &testVisualize){
+    RLOCK
+    //for(auto i = viewports.begin(); i != viewports.end(); ++i)
+    //    testVisualize.drawRect(x_min + 4, y_min + 4, 3, 3, sf::Color::Cyan);
+if(viewports.size() > 0)
+    for(auto i : nodes)
+        testVisualize.drawPoint( i->getX(), i->getY(), sf::Color::White);
+}
 bool vae::vsm::chunk::Chunklet::insert(Node* node){
     //TODO: Ensure we're inserting into a valid location and valid for the node type.
     //To do this, we'll need to have a bunch of high-level logic in place.
-    //RLOCK????
-    if(node->getChunklet() != NULL)
-        node->getChunklet()->remove(node);
+    {
+        RLOCK
+        if (node->getChunklet() != NULL)
+            node->getChunklet()->remove(node);
+    }
+
     WLOCK
     nodes.push_back(node);
     //LOG(Debug) << "Inserted node.";

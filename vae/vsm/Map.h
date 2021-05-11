@@ -18,6 +18,27 @@
 #include "../../olib/concurrentqueue.h"
 #include "../../vae/log.h"
 
+/**
+ *
+ * Vaewyn Server Mapping
+ *
+ * The high level overview:
+ *   Each map can be large, only positive coordinates and contain any number of entities.
+ *   A map is comprised of several layers:
+ *     * Tile
+ *     * Collision
+ *
+ *
+ * The server map contsists of a grid of Chunklets that comprise the map.
+ *
+ */
+
+
+
+
+
+
+
 namespace vae {
     namespace vsm {
         namespace chunk {
@@ -118,10 +139,6 @@ namespace vae {
                 Lock lock;
                 Map &parent;
 
-                //Strand will be used to push viewport events onto
-                //  Which will then pass that info to interfaces: interfaces to not directly interact with what vp sees
-                //boost::asio::io_context::strand strand;
-
                 /**
                  * Since I want to try and have each Chunklet be on its own thread, they'll have to maintain their own lists.
                  */
@@ -138,6 +155,10 @@ namespace vae {
                 const int x_max;
                 const int y_max;
 
+                //Strand will be used to push viewport events onto
+                //  Which will then pass that info to interfaces: interfaces do not directly interact with what vp sees
+                boost::asio::io_context::strand strand;
+
                 Chunklet(Map &parent, int chunkSize, int x, int y);
                 virtual ~Chunklet();
 
@@ -149,7 +170,7 @@ namespace vae {
                 //    WriteLock w_lock(lock);
                 //    //Do writer stuff
                 //}
-                void insert(vae::react::Action<Node>::Ptr action){
+                void insert(vae::react::Action<Node, Viewport>::Ptr action){
                     //       for(auto i : viewports)
 //            i->action_queue.enqueue(action);
                 }
@@ -161,11 +182,7 @@ namespace vae {
                 void remove(Viewport *viewport){
                     viewports.remove(viewport);
                 }
-                void draw(TestVisualize &testVisualize){
-                    RLOCK
-                    for(auto i = viewports.begin(); i != viewports.end(); ++i)
-                        testVisualize.drawRect(x_min + 4, y_min + 4, 3, 3, sf::Color::Cyan);
-                }
+                void draw(TestVisualize &testVisualize);
                 bool insert(Node *node);
                 void remove(Node *node){
                     WLOCK
@@ -183,6 +200,9 @@ namespace vae {
                 Chunklet::Ptr chunk;
                 std::shared_ptr<Map> map;
                 MapId mapId;
+                //Issue: an Entity, while about to cross a Chunklet, will briefly be in two Chunklets at the same time
+                //or, if a entity is large enough, it could encompass multiple chunklets
+                std::map<coordType, std::map<coordType, Chunklet::Ptr>> proxyChunks;
             public:
                 typedef std::shared_ptr<Node> Ptr;
                 Node(): pos(0, 0){
@@ -205,7 +225,6 @@ namespace vae {
                     return std::make_shared<vae::vsm::chunk::Node>(std::forward<T>(t)...);
                 }
                 */
-
 
                 void setMap(std::shared_ptr<Map> to){ this->map = to; }
 
@@ -358,13 +377,13 @@ namespace vae {
 
                 void draw(TestVisualize &testVisualize){
                     RLOCK
-                    //for(auto i = chunks.begin(); i != chunks.end(); ++i){
-                    //    Chunklet *cx = (*i).get();
+                    for(auto i = chunks.begin(); i != chunks.end(); ++i){
+                        Chunklet *cx = (*i).get();
                     //    testVisualize.drawRect(cx->x_min, cx->y_min, chunkSize, chunkSize, sf::Color(255, 255, 255, 30));
-                    //    cx->draw(testVisualize);
-                    //}
-                    for(auto i = nodes.begin(); i != nodes.end(); ++i)
-                        testVisualize.drawPoint(i->get().getX(), i->get().getY(), sf::Color::Magenta);
+                        cx->draw(testVisualize);
+                    }
+                    //for(auto i = nodes.begin(); i != nodes.end(); ++i)
+                    //    testVisualize.drawPoint(i->get().getX(), i->get().getY(), sf::Color::Magenta);
                     for(auto i = viewports.begin(); i != viewports.end(); ++i) {
                         i->get().draw(testVisualize);
                         //testVisualize.drawRect(i->get().getX(), i->get().getY(), i->get().getWidth() * chunkSize, i->get().getHeight() * chunkSize,
@@ -386,7 +405,7 @@ namespace vae {
 
                 //Gen/load this chunkMap
                 Map::Ptr _loadMap(Id id){
-                    return Map::Ptr(new Map(*this, id, 8));
+                    return Map::Ptr(new Map(*this, id, 16));
                 }
 /**
  * Loads the desired chunkMap

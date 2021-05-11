@@ -5,15 +5,17 @@
 #ifndef BOOSTTESTING_TESTSERVICE_H
 #define BOOSTTESTING_TESTSERVICE_H
 
+
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/bind/bind.hpp>
 
 #include "vsm/Map.h"
 #include "StressService.h"
 #include "test.h"
 #include "defs.hpp"
+#include "Service.h"
 
-
-class TestService {
+class TestService: public vae::Service {
     boost::asio::io_service &ios;
     bool running;
     bool started;   //set to true on the first cycle called
@@ -51,7 +53,7 @@ class TestService {
         processGUIEvents();
         //same goes for processGameLogic. NOTHING in game logic should be drawing. Naughty naughty
         processGameLogic(delta_t);
-        stressService.cycle(delta_t);
+        //stressService.cycle(delta_t);
 
         if(running) {
             composer.draw(testVisualize);
@@ -70,7 +72,9 @@ public:
             timer.async_wait(boost::bind(&TestService::cycle, this));
         }
     }
+
     TestService(boost::asio::io_service &ios, sf::RenderWindow *window):
+            Service("TestService"),
             ios(ios),
             timer(ios),
             testVisualize(window),
@@ -102,7 +106,7 @@ public:
             case sf::Keyboard::Key::X: vd = vd + 0.2; break;
 
             case sf::Keyboard::Key::Subtract:
-                for(int a = 0; a < 1000; ++a)
+                for(int a = 0; a < 10000; ++a)
                     stressService.newNode(mapId, vae::test::randString(5) + "-" + vae::test::randString(5));
                 break;
             case sf::Keyboard::Key::Add:

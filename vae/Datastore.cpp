@@ -4,9 +4,17 @@
 #include <iostream>
 #include <cassert>
 #include "Datastore.h"
-bool Datastore::connect(std::string connectString) {
+#include "log.h"
+bool vae::Datastore::connect(std::string connectString) {
     assert(conn.get() == 0);
     try{
+
+        /**
+         * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+         *      We are not allowed to use the logging system during database init!
+         * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+         */
+
         conn.reset(new pqxx::connection(connectString));
         if (conn->is_open()) {
             //LOG(Info) << "Opened database successfully: " << conn->dbname() << ".";
