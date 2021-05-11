@@ -10,7 +10,9 @@ find_package(Boost COMPONENTS serialization thread REQUIRED)
 link_directories(${Boost_LIBRARY_DIR})
 
 if(Boost_FOUND)
+    message(${PROJECT_SOURCE_DIR})
     include_directories(${Boost_INCLUDE_DIR} /usr/include)
+    include_directories(${PROJECT_SOURCE_DIR})
 
 
     #lua
@@ -31,7 +33,66 @@ if(Boost_FOUND)
 
     file(GLOB_RECURSE SOURCE_FILES "src/*.cpp")
 
-    add_executable(VaeTesting main.cpp vae/defs.hpp vae/defs.cpp BoostSerializationTest.cpp BoostSerializationTest.h PostgreSQLTest.cpp PostgreSQLTest.h LuaState.cpp LuaState.h vae/vsm/SkipMap.cpp vae/vsm/SkipMap.h vae/vsm/TestVisualize.cpp vae/vsm/TestVisualize.h vae/vsm/ChunkMap.cpp vae/vsm/ChunkMap.h vae/vsm/BasicMap.cpp vae/vsm/BasicMap.h vae/react/Action.cpp vae/react/Action.h vae/react/Observer.cpp vae/react/Observer.h vae/react/EntityActions.cpp vae/react/EntityActions.h vae/vsm/Map.cpp vae/vsm/Map.h vae/ThreadManager.cpp vae/ThreadManager.h log/logger_service.cpp log/logger_service.hpp vae/log.cpp vae/log.h vae/Datastore.cpp vae/Datastore.h vae/LogService.cpp vae/LogService.h vae/TestService.cpp vae/TestService.h olib/influxdb.hpp vae/LogStore.cpp vae/LogStore.h vae/StressService.cpp vae/StressService.h vae/test.cpp vae/test.h vae/Engine.cpp vae/Engine.h vae/defs.cpp vae/Entity.cpp vae/Entity.h vae/Service.h vae/HereGoes.cpp vae/HereGoes.h vae/Service.cpp vae/GuiService.cpp vae/GuiService.h)
+    include_directories(${PROJECT_SOURCE_DIR})
+
+    add_executable(VaeTesting
+            main.cpp
+            vae/defs.hpp
+            vae/defs.cpp
+            BoostSerializationTest.cpp
+            BoostSerializationTest.h
+            PostgreSQLTest.cpp
+            PostgreSQLTest.h
+            LuaState.cpp
+            LuaState.h
+            vae/vsm/SkipMap.cpp
+            vae/vsm/SkipMap.h
+            vae/vsm/TestVisualize.cpp
+            vae/vsm/TestVisualize.h
+            vae/vsm/ChunkMap.cpp
+            vae/vsm/ChunkMap.h
+            vae/vsm/BasicMap.cpp
+            vae/vsm/BasicMap.h
+            vae/react/Action.cpp
+            vae/react/Action.h
+            vae/react/Observer.cpp
+            vae/react/Observer.h
+            vae/react/EntityActions.cpp
+            vae/react/EntityActions.h
+            vae/vsm/Map.cpp
+            vae/vsm/Map.h
+            vae/ThreadManager.cpp
+            vae/ThreadManager.h
+            log/logger_service.cpp
+            log/logger_service.hpp
+            vae/log.cpp
+            vae/log.h
+            vae/Datastore.cpp
+            vae/Datastore.h
+            vae/LogService.cpp
+            vae/LogService.h
+            vae/TestService.cpp
+            vae/TestService.h
+            olib/influxdb.hpp
+            vae/LogStore.cpp
+            vae/LogStore.h
+            vae/StressService.cpp
+            vae/StressService.h
+            vae/test.cpp
+            vae/test.h
+            vae/Engine.cpp
+            vae/Engine.h
+            vae/defs.cpp
+            vae/entity/Entity.cpp
+            vae/entity/Entity.h
+            vae/Service.h
+            vae/HereGoes.cpp
+            vae/HereGoes.h
+            vae/Service.cpp
+            vae/GuiService.cpp
+            vae/GuiService.h
+            vae/entity/EntityTestService.cpp
+            vae/entity/EntityTestService.h vae/react/Ability.cpp vae/react/Ability.h vae/react/EntityAbilities.cpp vae/react/EntityAbilities.h)
 
     target_link_libraries(VaeTesting ${Boost_LIBRARIES} ${PQXX_LIB} ${PQ_LIB})
 # required for threads

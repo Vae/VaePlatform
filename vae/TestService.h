@@ -30,7 +30,7 @@ class TestService: public vae::Service {
     vae::vsm::TestVisualize testVisualize;
     vae::vsm::chunk::Composer composer;
     vae::vsm::chunk::Map::Id mapId;
-    vae::vsm::chunk::Viewport viewport;
+    vae::vsm::chunk::Viewpoint viewport;
     vae::test::StressService stressService;
 
     void cycle(){
@@ -115,6 +115,7 @@ public:
 
                 //case sf::Keyboard::Key::Space: node.say("Hello."); break;
             case sf::Keyboard::Key::Escape:
+                LOG(Info) << "Stop process.";
                 running = false;
                 delete testVisualize.getWindowPtr();
                 break;

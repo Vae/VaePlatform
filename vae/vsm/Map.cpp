@@ -48,7 +48,7 @@ bool vae::vsm::chunk::Chunklet::insert(Node* node){
     return false;
 }
 
-void vae::vsm::chunk::Viewport::setY(coordType to){
+void vae::vsm::chunk::Viewpoint::setY(coordType to){
     if(to < 0)
         to = 0;
     int diff = to - y;
@@ -85,7 +85,7 @@ void vae::vsm::chunk::Viewport::setY(coordType to){
     //assignChunkGrid();
     return;
 }
-void vae::vsm::chunk::Viewport::setX(coordType to){
+void vae::vsm::chunk::Viewpoint::setX(coordType to){
     if(to < 0)
         to = 0;
     int diff = to - x;
@@ -122,7 +122,7 @@ void vae::vsm::chunk::Viewport::setX(coordType to){
     return;
 }
 
-void vae::vsm::chunk::Viewport::assignChunkGrid(){
+void vae::vsm::chunk::Viewpoint::assignChunkGrid(){
     for(int a = 0; a < width; a++)
         for(int b = 0; b < height; b++) {
             int xi = (a + v_index) % width;
@@ -137,7 +137,7 @@ void vae::vsm::chunk::Viewport::assignChunkGrid(){
             chunkGrid[x_index][y_index]->insert(this);
         }
 }
-void vae::vsm::chunk::Viewport::draw(TestVisualize &testVisualize){
+void vae::vsm::chunk::Viewpoint::draw(TestVisualize &testVisualize){
     for(int a = 0; a < width; a++)
         for(int b = 0; b < height; b++)
             if(chunkGrid[a][b] != NULL)

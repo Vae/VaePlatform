@@ -7,10 +7,14 @@
 
 #include <string>
 
-#include "vsm/Map.h"
-#include "Datastore.h"
+#include "vae/vsm/Map.h"
+#include "vae/Datastore.h"
+#include "LuaState.h"
+#include "vae/react/Ability.h"
 
 namespace vae{
+
+    //class Viewport: public vae::vsm::chunk::Viewpoint{    };
 
 /**
  * The Entity is the start of what can be called a monster, player, trigger/script, NPC, items etc.
@@ -23,17 +27,34 @@ namespace vae{
  *   are constructed via EntityComposer
  */
     class Entity {
+    public:
+        typedef std::shared_ptr<Entity> Ptr;
+        typedef vae::react::Ability Ability;
+    private:
+        EntityID eID;
         boost::asio::io_context::strand strand;
-        vae::vsm::chunk::Node myNode;
+        vae::vsm::chunk::Node node;
+        LuaState luaState;
+        std::map<std::string, Ability::Ptr> abilities;
     public:
         Entity(boost::asio::io_context &ios): strand(ios){
         }
-        void say(std::string dis){
-            //ensure we're on a map
-            if(myNode.getChunklet()){
-
+        void addNewAbility(Ability::Ptr dis){
+            if(abilities.count(dis->getName())) {
+                LOG(Warn) << "Ability already present.";
+                return;
+            }
+            else{
+                abilities[dis->getName()] = dis;
+                dis->enlist(luaState);
             }
         }
+        //LuaState &getLuaState(){ return luaState; }
+        sol::state &getLua() { return luaState.getLua(); }
+    };
+
+    class AbilitySee{
+
     };
 
     class EntityComposer{
@@ -45,7 +66,7 @@ namespace vae{
         bool start(){
             try{
                 /* Create SQL statement */
-                char* sql = "SELECT value FROM vs.EntityComposer WHERE key = 'nextEntityId';";
+                const char* sql = "SELECT value FROM vs.EntityComposer WHERE key = 'nextEntityId';";
 
                 /* Create a non-transactional object. */
                 pqxx::nontransaction N(ds->getContext());
@@ -65,6 +86,14 @@ namespace vae{
             }
             return false;
         }
+
+        Entity::Ptr getEntityByName(std::string name){
+            //TODO: Interface this fetching with the database, loading all items needed to construct an entity.
+            //For now, do it all manually
+            Entity::Ptr p(new Entity(ios));
+            return p;
+        }
+
     };
 }   //namespace vae
 #endif //BOOSTTESTING_ENTITY_H

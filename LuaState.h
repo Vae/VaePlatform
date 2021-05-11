@@ -11,7 +11,15 @@
 
 class LuaState {
     sol::state lua;
-    void log(int level, const char* file, int line, const char* function, std::string message){
+    void logDebug(const char* file, int line, const char* function, std::string message){
+        vl::Debug(logInstance).start(file, line, function) << message;
+        //std::cout << message << std::endl;
+    }
+    void log(const char* file, int line, const char* function, std::string message){
+        vl::Debug(logInstance).start(file, line, function) << message;
+        //std::cout << message << std::endl;
+    }
+    void logError(const char* file, int line, const char* function, std::string message){
         vl::Debug(logInstance).start(file, line, function) << message;
         //std::cout << message << std::endl;
     }
@@ -26,7 +34,10 @@ public:
         sol::usertype<LuaState> player_type = lua.new_usertype<LuaState>(
                 "LuaState", sol::constructors<LuaState()>(),
                 "test", &LuaState::test,
-                "log", &LuaState::log);
+                "log", &LuaState::log,
+                "logDebug", &LuaState::logDebug,
+                "logError", &LuaState::logError
+                );
     }
 };
 

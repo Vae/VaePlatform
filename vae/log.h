@@ -9,8 +9,8 @@
 #include <iomanip>
 #include <boost/noncopyable.hpp>
 #include "boost/date_time/posix_time/posix_time.hpp"
-#include "../olib/concurrentqueue.h"
-#include "LogService.h"
+#include "olib/concurrentqueue.h"
+//#include "LogService.h"
 
 //      Log a single line:
 //    LOG(Debug) << "Start.";
@@ -76,6 +76,16 @@ namespace vl {
         ~LogLevel();
     };
 
+    class LogStatics{
+    public:
+        LogStatics(const char* name, const char* consoleColorText, const level_t level): name(name), consoleColorText(consoleColorText), level(level){}
+        const char* consoleColorText;
+        const char* name;
+        const level_t level;
+    private:
+        LogStatics(): consoleColorText(""), name(""), level(0){}
+    };
+
     class Debug: public LogLevel{
     public:
         Debug(LogEngine &logEngine): LogLevel(logEngine, 0, "debug") {
@@ -100,7 +110,7 @@ namespace vl {
 
     class Error: public LogLevel{
     public:
-        Error(LogEngine &logEngine): LogLevel(logEngine, 1000, "warning") {
+        Error(LogEngine &logEngine): LogLevel(logEngine, 1000, "error") {
             codeDetails = true;
         }
     };

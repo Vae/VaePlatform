@@ -3,4 +3,4 @@
 //
 
 #include "LogStore.h"
-#include "../olib/influxdb.hpp"
+#include "olib/influxdb.hpp"

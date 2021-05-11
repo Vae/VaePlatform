@@ -12,11 +12,12 @@
 #include <boost/chrono.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/numeric/ublas/vector_sparse.hpp>
+#include <boost/asio.hpp>
 
 #include "TestVisualize.h"
-#include "../react/Action.h"
-#include "../../olib/concurrentqueue.h"
-#include "../../vae/log.h"
+#include "vae/react/Action.h"
+#include "olib/concurrentqueue.h"
+#include "vae/log.h"
 
 /**
  *
@@ -87,7 +88,7 @@ namespace vae {
             };
 
 //Consumer
-            class Viewport: private boost::noncopyable{
+            class Viewpoint: private boost::noncopyable{
                 int width, height;
                 int x, y;
 
@@ -100,12 +101,12 @@ namespace vae {
                 void assignChunkGrid();
             public:
                 //moodycamel::ConcurrentQueue<std::shared_ptr<vae::react::Action>> action_queue;
-                typedef std::shared_ptr<Viewport> Ptr;
-                Viewport(int width, int height): width(width), height(height), x(0), y(0), chunkGrid(width, std::vector<std::shared_ptr<Chunklet>>(height)) {
+                typedef std::shared_ptr<Viewpoint> Ptr;
+                Viewpoint(int width, int height): width(width), height(height), x(0), y(0), chunkGrid(width, std::vector<std::shared_ptr<Chunklet>>(height)) {
                 }
-                Viewport(int x, int y, int width, int height): width(width), height(height), x(x), y(y), chunkGrid(width, std::vector<std::shared_ptr<Chunklet>>(height)) {
+                Viewpoint(int x, int y, int width, int height): width(width), height(height), x(x), y(y), chunkGrid(width, std::vector<std::shared_ptr<Chunklet>>(height)) {
                 }
-                virtual ~Viewport(){
+                virtual ~Viewpoint(){
                     LOG(Info) << "Close Viewport.";
                 }
 
@@ -143,7 +144,7 @@ namespace vae {
                  * Since I want to try and have each Chunklet be on its own thread, they'll have to maintain their own lists.
                  */
                 std::list<Node*> nodes;
-                std::list<Viewport*> viewports;
+                std::list<Viewpoint*> viewports;
 
                 //moodycamel::ConcurrentQueue<vae::react::Action::Ptr> action_queue;
             public:
@@ -170,16 +171,16 @@ namespace vae {
                 //    WriteLock w_lock(lock);
                 //    //Do writer stuff
                 //}
-                void insert(vae::react::Action<Node, Viewport>::Ptr action){
+                void insert(vae::react::Action<Node, Viewpoint>::Ptr action){
                     //       for(auto i : viewports)
 //            i->action_queue.enqueue(action);
                 }
 
-                bool insert(Viewport *viewport){
+                bool insert(Viewpoint *viewport){
                     viewports.push_back(viewport);
                     return false;
                 }
-                void remove(Viewport *viewport){
+                void remove(Viewpoint *viewport){
                     viewports.remove(viewport);
                 }
                 void draw(TestVisualize &testVisualize);
@@ -266,7 +267,7 @@ namespace vae {
                 std::list<Chunklet::Ptr> chunks;
                 std::list<std::reference_wrapper<Node>> nodes;
                 //boost::numeric::ublas::mapped_matrix<int> nodeMap;
-                std::list<std::reference_wrapper<Viewport>> viewports;
+                std::list<std::reference_wrapper<Viewpoint>> viewports;
                 /**
                  * @param x
                  * @param y
@@ -283,7 +284,7 @@ namespace vae {
                  * @returns
                  *  If the viewport insertion failed, true will return, else false for success.
                  */
-                bool insert(Viewport &viewport){
+                bool insert(Viewpoint &viewport){
                     viewports.push_back(viewport);
                     return false;
                 }
@@ -465,7 +466,7 @@ namespace vae {
                     }
                     return true;
                 }
-                bool insert(Viewport &vp, MapId id){
+                bool insert(Viewpoint &vp, MapId id){
                     if(readyMap(id))
                         return true;
                     std::shared_ptr<Map> m = maps[id];

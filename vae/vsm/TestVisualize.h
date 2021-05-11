@@ -8,8 +8,8 @@
 #include<SFML/Graphics.hpp>
 #include <boost/noncopyable.hpp>
 
-#include "../defs.hpp"
-#include "../log.h"
+#include "vae/defs.hpp"
+#include "vae/log.h"
 
 namespace vae {
 

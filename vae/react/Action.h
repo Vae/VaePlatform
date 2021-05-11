@@ -8,9 +8,13 @@
 #include <memory>
 #include <boost/noncopyable.hpp>
 #include <functional>
+#include "../../LuaState.h"
 
 namespace vae {
     namespace react {
+
+
+
         /**
          * Contains all data needed by a viewport to witness an action.
          * "all data" because each time we need to ask a node something, we stall the node.
@@ -45,31 +49,15 @@ namespace vae {
         };
 
         template<class P, class C> //Producer, Consumer
-        class Ability: private boost::noncopyable{
-            P &p;
-            Ability(P &owner): p(owner){
-            }
-            P &getOwner() { return p; }
-        };
-
-        template<class P, class C> //Producer, Consumer
-        class AbilityHear: public Ability<P, C>{
-        public:
-            AbilityHear(P &owner): Ability<P, C>(owner){}
-
-            void hear(std::string message);
-        };
-
-        template<class P, class C> //Producer, Consumer
         class ActionSpeak: public Action<P, C>{
             std::string message;
         public:
             ActionSpeak(std::string message):message(message){}
             virtual void witness(std::shared_ptr<C> c){
-                AbilityHear<P, C> *hearing = c->getAbility("hear");
-                if(hearing){
-                    hearing->hear(message);
-                }
+                //AbilityHear<P, C> *hearing = c->getAbility("hear");
+                //if(hearing){
+                //    hearing->hear(message);
+                //}
             }
         };
 

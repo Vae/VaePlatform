@@ -21,7 +21,8 @@
 #include "vae/TestService.h"
 #include "vae/LogStore.h"
 #include "vae/vsm/TestVisualize.h"
-#include "vae/Entity.h"
+#include "vae/entity/Entity.h"
+#include "vae/entity/EntityTestService.h"
 #include "vae/Service.h"
 
 /**
@@ -63,6 +64,7 @@ void startDB(vae::Datastore::Ptr p){
 }
 
 int main() {
+    //cout << "\033[1;31mbold red text\033[0m\n";
     //Fall-off-the-bone Steak: (2/3)21 3 or 2 hours exposed to smoke, 2 hours in foil, 1 hour. 250f
     /**
      *
@@ -111,6 +113,9 @@ int main() {
         LOG(Error) << "Failed to connect to SQL database.";
         return 1;
     }
+    LOG(Warn) << " Test warning ";
+    LOG(Error) << " Test error ";
+    LOG(Security) << " Test security ";
 
     LOG(Info) << "Low level start up complete.";
 
@@ -122,18 +127,23 @@ int main() {
     vae::EntityComposer entityComposer(ios, datastore);
     entityComposer.start();
 
+    vae::EntityTestService entityTestService(ios, entityComposer);
+    entityTestService.doTest();
+
+
+
     LOG(Info) << "Mid level start up complete.";
 
-    //LuaState luaState;
+    LuaState luaState;
     ////    void log(int level, const char* file, int line, const char* function, std::string message){
-    //luaL_dostring(
-    //        luaState.getLua().lua_state(),
-    //        "print(\"Hello bub\")"
-    //);
+    luaL_dostring(
+            luaState.getLua().lua_state(),
+            "print(\"Hello bub\")"
+    );
     //log(int level, const char* file, int line, const char* function, std::string message)
     //state.do_string("cppObj = CppObject:new() cppObj:TestFunction1()");
-    //luaState.getLua().do_string("t = LuaState:new() t:test()"
-    //                            "t:log(1, \"abc\", 2, \"xyz\", \"qwe\")");
+    luaState.getLua().do_string("t = LuaState:new() t:test()"
+                                "t:log(\"abc\", 2, \"xyz\", \"qwe\")");
 
     vae::ServiceRegistry serviceRegistry;
     vae::Service::Ptr p(new TestService(ios, window));
