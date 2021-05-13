@@ -65,7 +65,6 @@ class TestService: public vae::Service {
     }
     void processGameLogic(double delta_t);
 public:
-
     void setTimer(){
         if(running) {
             timer.expires_from_now(boost::posix_time::milliseconds(int(1000/fps)));
@@ -99,10 +98,10 @@ public:
             case sf::Keyboard::Key::Left: viewport.setX(viewport.getX() - 4); break;
             case sf::Keyboard::Key::Right: viewport.setX(viewport.getX() + 3); break;
 
-            case sf::Keyboard::Key::W: node.setY(node.getY() - 1); break;
-            case sf::Keyboard::Key::A: node.setX(node.getX() - 1); break;
-            case sf::Keyboard::Key::S: node.setY(node.getY() + 1); break;
-            case sf::Keyboard::Key::D: node.setX(node.getX() + 1); break;
+            case sf::Keyboard::Key::W: node.setPos(node.getX(), node.getY() - 1); break;
+            case sf::Keyboard::Key::A: node.setPos(node.getX() - 1, node.getY()); break;
+            case sf::Keyboard::Key::S: node.setPos(node.getX(), node.getY() + 1); break;
+            case sf::Keyboard::Key::D: node.setPos(node.getX() + 1, node.getY()); break;
             case sf::Keyboard::Key::X: vd = vd + 0.2; break;
 
             case sf::Keyboard::Key::Subtract:

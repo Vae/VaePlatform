@@ -46,7 +46,7 @@ namespace vae{
     };
 }   //namespace vae
 
-typedef signed long EntityID;
+typedef signed long EntityId;
 
 
 

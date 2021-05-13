@@ -31,6 +31,7 @@ if(viewports.size() > 0)
     for(auto i : nodes)
         testVisualize.drawPoint( i->getX(), i->getY(), sf::Color::White);
 }
+/*
 bool vae::vsm::chunk::Chunklet::insert(Node* node){
     //TODO: Ensure we're inserting into a valid location and valid for the node type.
     //To do this, we'll need to have a bunch of high-level logic in place.
@@ -46,7 +47,7 @@ bool vae::vsm::chunk::Chunklet::insert(Node* node){
     //TODO: Inform all viewports of the new node (if applicable)
 
     return false;
-}
+}*/
 
 void vae::vsm::chunk::Viewpoint::setY(coordType to){
     if(to < 0)
@@ -143,7 +144,7 @@ void vae::vsm::chunk::Viewpoint::draw(TestVisualize &testVisualize){
             if(chunkGrid[a][b] != NULL)
                 testVisualize.drawRect(chunkGrid[a][b]->x_min + 1, chunkGrid[a][b]->y_min + 1, map->chunkSize - 3, map->chunkSize - 3, sf::Color::Blue);
 }
-
+/*
 bool vae::vsm::chunk::Node::setX(coordType to){
     Chunklet::Ptr targetChunk = getMap()->getChunklet( getMap()->translateToChunk(to), getChunklet()->chunk_y);
     if( targetChunk.get() != getChunklet().get() ){
@@ -169,10 +170,19 @@ bool vae::vsm::chunk::Node::setY(coordType to){
     }
     pos.y = to;
     return false;
-}
+}*/
 bool vae::vsm::chunk::Node::setPos(coordType x, coordType y){
+    map->setNodePos(this, getX(), getY(), boost::bind(&vae::vsm::chunk::Node::_setPos, this, _1, _2, _3), chunk, x, y);
+
+
+
+    /*
     Chunklet::Ptr targetChunk = getMap()->getChunklet(getMap()->translateToChunk(x), getMap()->translateToChunk(y));
     if(targetChunk.get() != getChunklet().get()){
+        targetChunk->take(this, boost::bind(&vae::vsm::chunk::Node::_setPos, this), x, y);
+
+        //work_io_service_.post (boost::bind(&LogService::log_impl, this, system, time, level, lv, file, line, function, message));
+
         if (targetChunk->insert(this)) {
             LOG(Warn) << "Insert failure.";
             return true;
@@ -180,8 +190,14 @@ bool vae::vsm::chunk::Node::setPos(coordType x, coordType y){
         this->chunk = targetChunk;
     }
     pos.x = x;
-    pos.y = y;
+    pos.y = y;*/
     return false;
+}
+
+bool vae::vsm::chunk::Node::_setPos(Chunklet::Ptr targetChunk, coordType x, coordType y){
+    this->chunk = targetChunk;
+    this->pos.x = x;
+    this->pos.y = y;
 }
 
 //dist = speed * delta_t

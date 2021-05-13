@@ -13,6 +13,8 @@
 #include <boost/noncopyable.hpp>
 #include <boost/numeric/ublas/vector_sparse.hpp>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
+
 
 #include "TestVisualize.h"
 #include "vae/react/Action.h"
@@ -33,12 +35,6 @@
  * The server map contsists of a grid of Chunklets that comprise the map.
  *
  */
-
-
-
-
-
-
 
 namespace vae {
     namespace vsm {
@@ -184,12 +180,43 @@ namespace vae {
                     viewports.remove(viewport);
                 }
                 void draw(TestVisualize &testVisualize);
-                bool insert(Node *node);
+                /*bool insert(Node *node);
                 void remove(Node *node){
                     WLOCK
                     //TODO: Inform viewports that the node left
                     nodes.remove(node);
                     //std::cout << "Removed node." << std::endl;
+                }*/
+
+                void exchange(Node *node, coordType x, coordType y, boost::function<void(Chunklet::Ptr targetChunk, coordType x, coordType y)> cb_completed, Chunklet::Ptr newChunk){
+                    //We need to give newChunk the node
+                    //Step 1: Call _yield to get ride of our node and call newChunklet when we're done
+                    //strand.post(boost::bind<void>(&Chunklet::_exchange, this, node, x, y, cb_completed, newChunk));
+                    nodes.remove(node);
+                    newChunk->take(node, x, y, cb_completed, newChunk);
+                }
+                void take(Node *node, coordType x, coordType y, boost::function<void(Chunklet::Ptr targetChunk, coordType x, coordType y)> cb_completed, Chunklet::Ptr newChunk){
+                    //newChunk will be a smart pointer to myself (this)
+                    strand.post(boost::bind<void>(&Chunklet::_take, this, node, x, y, cb_completed, newChunk));
+                }
+                void yield(Node *node){
+                    strand.post(boost::bind<void>(&Chunklet::_yield, this, node));
+                }
+            private:
+                //As always, _ underscore methods are to be only called via callback.
+                void _take(Node *node, coordType x, coordType y, boost::function<void(Chunklet::Ptr targetChunk, coordType x, coordType y)> cb_completed, Chunklet::Ptr newChunk){
+                    //newChunk will be a smart pointer to myself (this)
+                    nodes.push_back(node);
+                    cb_completed(newChunk, x, y);
+                }
+                void _exchange(Node *node, coordType x, coordType y, boost::function<void(Chunklet::Ptr targetChunk, coordType x, coordType y)> cb_completed, Chunklet::Ptr newChunk){
+                    nodes.remove(node);
+                    //newChunk->strand.post(cb_completed(newChunk, x, y));
+                    //newChunk->strand.post(boost::bind<void>(node, x, y, cb_completed, newChunk));
+                    newChunk->take(node, x, y, cb_completed, newChunk);
+                }
+                void _yield(Node *node){
+                    nodes.remove(node);
                 }
             };
 
@@ -229,8 +256,8 @@ namespace vae {
 
                 void setMap(std::shared_ptr<Map> to){ this->map = to; }
 
-                bool setX(coordType to);
-                bool setY(coordType to);
+                //bool setX(coordType to);
+                //bool setY(coordType to);
                 bool setPos(coordType x, coordType y);
 
                 //dist = speed * delta_t
@@ -247,7 +274,8 @@ namespace vae {
                     if(map.get() != NULL)
                         LOG(Warn) << "Set chunkMap ID with a valid chunkMap already set!";
                 }
-                void setChunklet(Chunklet::Ptr to) { chunk = to; }
+            private:
+                bool _setPos(Chunklet::Ptr targetChunk, coordType x, coordType y);
             };
 
 /**
@@ -296,23 +324,23 @@ namespace vae {
                  *  If the node insertion failed, true will return, else false for success.
                  */
                 bool insert(Node &node, coordType x, coordType y){
-                    //TODO: Ensure the node is in bounds defined by the Map shape
+                    //TODO: Ensure the node is in bounds defined by the Map shape.
                     //Ensure the chunk is loaded; if not, load it.
                     int chunk_x = translateToChunk(x);
                     int chunk_y = translateToChunk(y);
 
                     Chunklet::Ptr dest = getChunklet(chunk_x, chunk_y);
 
-                    if(dest == NULL || dest->insert(&node)) {
+                    if(dest == NULL) {
                         LOG(Warn) << "Failed to insert node.";
                         return true;
                     }
-                    node.pos.x = x;
-                    node.pos.y = y;
-                    node.setChunklet(dest);
                     nodes.push_back(node);
+//void take(Node *node, coordType x, coordType y, boost::function<void(Chunklet::Ptr targetChunk, coordType x, coordType y)> cb_completed, Chunklet::Ptr newChunk){
+                    dest->take(&node, x, y, boost::bind<void>(&Node::_setPos, &node, dest, x, y), dest);
                     return false;
                 }
+
                 //Will get a rectangle lock
                 void grabChunkLock(int x, int y){
                 }
@@ -375,6 +403,13 @@ namespace vae {
                     }
                     return NULL;
                 }
+                void setNodePos(Node *node, coordType x, coordType y, boost::function<void(Chunklet::Ptr targetChunk, coordType x, coordType y)> cb_completed, Chunklet::Ptr currentChunk, coordType targetX, coordType targetY){
+                    Chunklet::Ptr targetChunk = getChunklet(translateToChunk(x), translateToChunk(y));
+                    if(targetChunk.get() == currentChunk.get())
+                        cb_completed(targetChunk, targetX, targetY);
+                    else
+                        currentChunk->exchange(node, targetX, targetY, cb_completed, targetChunk);
+                }
 
                 void draw(TestVisualize &testVisualize){
                     RLOCK
@@ -406,7 +441,7 @@ namespace vae {
 
                 //Gen/load this chunkMap
                 Map::Ptr _loadMap(Id id){
-                    return Map::Ptr(new Map(*this, id, 16));
+                    return Map::Ptr(new Map(*this, id, 8));
                 }
 /**
  * Loads the desired chunkMap
@@ -446,7 +481,6 @@ namespace vae {
                 }
                 Composer(boost::asio::io_context &ioContext, std::string connectionString): ioContext(ioContext), connectionString(connectionString){
                 }
-
                 bool insert(Node& node, coordType x, coordType y){
                     //inserting onto a valid map?
                     if(node.getMapId()  == "")
@@ -465,6 +499,9 @@ namespace vae {
                         return false;
                     }
                     return true;
+                }
+                template<typename F_CB>
+                bool insert(Node& node, coordType x, coordType y, F_CB f){
                 }
                 bool insert(Viewpoint &vp, MapId id){
                     if(readyMap(id))

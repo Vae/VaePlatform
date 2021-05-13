@@ -31,7 +31,7 @@ namespace vae{
         typedef std::shared_ptr<Entity> Ptr;
         typedef vae::react::Ability Ability;
     private:
-        EntityID eID;
+        EntityId eID;
         boost::asio::io_context::strand strand;
         vae::vsm::chunk::Node node;
         LuaState luaState;

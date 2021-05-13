@@ -8,6 +8,5 @@ void TestService::processGameLogic(double delta_t){
     double newY = node.getY() + (sin(vd) * delta_t);
 
     //node.setX(node.getX() + 1);
-    node.setX(newX);
-    node.setY(newY);
+    node.setPos(newX, newY);
 }

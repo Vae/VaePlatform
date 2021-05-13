@@ -86,8 +86,6 @@ if(Boost_FOUND)
             vae/entity/Entity.cpp
             vae/entity/Entity.h
             vae/Service.h
-            vae/HereGoes.cpp
-            vae/HereGoes.h
             vae/Service.cpp
             vae/GuiService.cpp
             vae/GuiService.h

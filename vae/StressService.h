@@ -86,6 +86,7 @@ namespace vae {
                     node.setX(newX);
                     node.setY(newY);
                 }*/
+
                 node.getChunklet()->strand.post(boost::bind(&vae::vsm::chunk::Node::movePos, &node, vd, speed * delta_t));
 
                 //node.movePos(vd, speed * delta_t);
@@ -100,10 +101,13 @@ namespace vae {
             boost::asio::io_context::strand strand;
             vae::vsm::chunk::Composer &composer;
             std::list<NodeController *> nodeControllers;
+            void _newNodeStart(NodeController *dis){
+
+            }
             void _newNode(vae::vsm::chunk::Map::Id mapId, std::string name){
                 nodeControllers.emplace_back(new NodeController(ios, name));
                 nodeControllers.back()->getNode().setMapId(mapId);
-                composer.insert(nodeControllers.back()->getNode(), rand() %800, rand()%600);
+                composer.insert(nodeControllers.back()->getNode(), rand() %800, rand()%600, boost::bind<void>(&StressService::_newNodeStart, this, nodeControllers.back()));
             }
         public:
             StressService(boost::asio::io_service &ios, vae::vsm::chunk::Composer &composer) : ios(ios), strand(ios), composer(composer) {

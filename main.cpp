@@ -156,7 +156,7 @@ int main() {
 
     std::vector<std::thread> threads;
     auto threadCount = std::thread::hardware_concurrency() * 2;
-    //threadCount = 2;
+    //threadCount = 1;
     cout << "Thread count: " << threadCount << endl;
     LOG(Info) << "Thread count: " << threadCount;
 
