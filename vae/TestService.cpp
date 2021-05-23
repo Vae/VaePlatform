@@ -4,9 +4,9 @@
 
 #include "TestService.h"
 void TestService::processGameLogic(double delta_t){
-    double newX = node.getX() + (cos(vd) * delta_t);
-    double newY = node.getY() + (sin(vd) * delta_t);
+    //double newX = node.getX() + (cos(vd) * delta_t);
+    //double newY = node.getY() + (sin(vd) * delta_t);
 
     //node.setX(node.getX() + 1);
-    node.setPos(newX, newY);
+    //node.setPos(newX, newY);
 }

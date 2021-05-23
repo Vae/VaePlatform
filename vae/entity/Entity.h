@@ -33,7 +33,7 @@ namespace vae{
     private:
         EntityId eID;
         boost::asio::io_context::strand strand;
-        vae::vsm::chunk::Node node;
+        vae::vsm::chunk::Node *node;
         LuaState luaState;
         std::map<std::string, Ability::Ptr> abilities;
     public:

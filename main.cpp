@@ -113,6 +113,8 @@ int main() {
         LOG(Error) << "Failed to connect to SQL database.";
         return 1;
     }
+
+
     LOG(Warn) << " Test warning ";
     LOG(Error) << " Test error ";
     LOG(Security) << " Test security ";
@@ -146,7 +148,8 @@ int main() {
                                 "t:log(\"abc\", 2, \"xyz\", \"qwe\")");
 
     vae::ServiceRegistry serviceRegistry;
-    vae::Service::Ptr p(new TestService(ios, window));
+    vae::vsm::chunk::Composer mapComposer(ios, datastore);
+    vae::Service::Ptr p(new TestService(ios, window, mapComposer));
     serviceRegistry.registryService(p);
 
     //vae::vsm::TestVisualize testVisualize("test");

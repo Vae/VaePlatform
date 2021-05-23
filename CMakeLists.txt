@@ -90,7 +90,14 @@ if(Boost_FOUND)
             vae/GuiService.cpp
             vae/GuiService.h
             vae/entity/EntityTestService.cpp
-            vae/entity/EntityTestService.h vae/react/Ability.cpp vae/react/Ability.h vae/react/EntityAbilities.cpp vae/react/EntityAbilities.h)
+            vae/entity/EntityTestService.h
+            vae/react/Ability.cpp
+            vae/react/Ability.h
+            vae/react/EntityAbilities.cpp
+            vae/react/EntityAbilities.h
+            vae/vsm/MapInterface.h
+            vae/vsm/NodeActions.cpp
+            vae/vsm/NodeActions.h)
 
     target_link_libraries(VaeTesting ${Boost_LIBRARIES} ${PQXX_LIB} ${PQ_LIB})
 # required for threads

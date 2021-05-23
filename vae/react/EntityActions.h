@@ -2,7 +2,7 @@
 // Created by protocol on 4/16/21.
 //
 
-#ifndef BOOSTTESTING_ENTITYACTIONS_H
+#ifndef BOOSTTESTING_NODEACTIONS_H
 #define BOOSTTESTING_ENTITYACTIONS_H
 
 #include "Action.h"
@@ -12,4 +12,4 @@ namespace vae {
 
     }   //namespace react
 }   //namespace vae
-#endif //BOOSTTESTING_ENTITYACTIONS_H
+#endif //BOOSTTESTING_NODEACTIONS_H
